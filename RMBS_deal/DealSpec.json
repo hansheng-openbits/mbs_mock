@@ -1,0 +1,386 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/rmbs/dealspec.v1.1.schema.json",
+  "title": "Non-Agency RMBS DealSpec v1.1",
+  "type": "object",
+  "required": [
+    "meta", "currency", "dates", "parties",
+    "collateral", "bonds", "fees", "accounts", "funds",
+    "ledgers", "groups", "variables", "tests", "waterfalls",
+    "reporting"
+  ],
+  "properties": {
+    "meta": { "$ref": "#/$defs/meta" },
+    "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+    "jurisdiction": { "$ref": "#/$defs/jurisdiction" },
+    "dates": { "$ref": "#/$defs/deal_dates" },
+    "documents": { "$ref": "#/$defs/documents" },
+    "parties": { "$ref": "#/$defs/parties" },
+    "servicing": { "$ref": "#/$defs/servicing" },
+    "collateral": { "$ref": "#/$defs/collateral" },
+    "bonds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/bond" }
+    },
+    "fees": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fee" }
+    },
+    "accounts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/account" }
+    },
+    "funds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/fund" }
+    },
+    "ledgers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ledger" }
+    },
+    "groups": {
+      "type": "object",
+      "description": "Named groups used in waterfalls/tests to avoid repeating bond lists.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "variables": {
+      "type": "object",
+      "description": "Named computed expressions evaluated each period. Order matters (dependencies).",
+      "additionalProperties": { "type": "string" }
+    },
+    "tests": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/test" }
+    },
+    "waterfalls": {
+      "type": "object",
+      "required": ["interest", "principal", "loss_allocation"],
+      "properties": {
+        "interest": { "$ref": "#/$defs/waterfall" },
+        "principal": { "$ref": "#/$defs/waterfall" },
+        "loss_allocation": { "$ref": "#/$defs/loss_allocation" }
+      }
+    },
+    "hedges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/hedge" }
+    },
+    "options": { "$ref": "#/$defs/options" },
+    "reporting": { "$ref": "#/$defs/reporting" }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "required": ["deal_id", "deal_name", "asset_type", "version"],
+      "properties": {
+        "deal_id": { "type": "string" },
+        "deal_name": { "type": "string" },
+        "asset_type": { "type": "string", "enum": ["NON_AGENCY_RMBS"] },
+        "version": { "type": "string" }
+      }
+    },
+    "jurisdiction": {
+      "type": "object",
+      "properties": {
+        "country": { "type": "string" },
+        "governing_law": { "type": "string" },
+        "tax_regime": { "type": "string" }
+      }
+    },
+    "deal_dates": {
+      "type": "object",
+      "required": ["cutoff_date", "closing_date", "first_payment_date", "maturity_date", "payment_frequency", "day_count"],
+      "properties": {
+        "cutoff_date": { "type": "string", "format": "date" },
+        "closing_date": { "type": "string", "format": "date" },
+        "first_payment_date": { "type": "string", "format": "date" },
+        "maturity_date": { "type": "string", "format": "date" },
+        "payment_frequency": { "type": "string", "enum": ["MONTHLY"] },
+        "day_count": { "type": "string", "enum": ["30_360", "ACT_360", "ACT_365", "ACT_ACT"] },
+        "business_day_convention": { "type": "string", "enum": ["FOLLOWING", "MODFOLLOWING", "PRECEDING", "NONE"], "default": "NONE" },
+        "payment_delay_days": { "type": "integer", "minimum": 0, "default": 0 }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "description"],
+        "properties": {
+          "type": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "parties": {
+      "type": "object",
+      "required": ["issuer", "trustee", "servicer"],
+      "properties": {
+        "issuer": { "$ref": "#/$defs/party" },
+        "trustee": { "$ref": "#/$defs/party" },
+        "servicer": { "$ref": "#/$defs/party" }
+      },
+      "additionalProperties": true
+    },
+    "party": {
+      "type": "object",
+      "required": ["name"],
+      "properties": { "name": { "type": "string" }, "lei": { "type": "string" } }
+    },
+    "servicing": {
+      "type": "object",
+      "properties": {
+        "servicing_fee": {
+          "type": "object",
+          "properties": {
+            "basis": { "type": "string", "enum": ["CURRENT_BALANCE", "SCHEDULED_BALANCE", "COLLECTIONS"] },
+            "rate_bps": { "type": "number" }
+          }
+        },
+        "advancing": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "advance_types": { "type": "array", "items": { "type": "string" } },
+            "advance_limit_rule": { "type": "string", "description": "Expression for recoverability limit" }
+          }
+        }
+      }
+    },
+    "collateral": {
+      "type": "object",
+      "required": ["original_balance", "model_interface", "loan_data"],
+      "properties": {
+        "original_balance": { "type": "number", "minimum": 0 },
+        "model_interface": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "type": "string" },
+            "inputs_required": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "loan_data": {
+          "type": "object",
+          "properties": {
+            "schema_ref": {
+               "type": "object",
+               "properties": {
+                   "format": { "type": "string" },
+                   "source_uri": { "type": "string" }
+               }
+            }
+          }
+        }
+      }
+    },
+    "bond": {
+      "type": "object",
+      "required": ["id", "type", "original_balance", "coupon", "priority", "interest_rules", "principal_rules"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["NOTE", "IO", "RESIDUAL"] },
+        "original_balance": { "type": "number", "minimum": 0 },
+        "coupon": { "$ref": "#/$defs/coupon" },
+        "priority": {
+          "type": "object",
+          "required": ["interest", "principal"],
+          "properties": {
+            "interest": { "type": "integer" },
+            "principal": { "type": "integer" }
+          }
+        },
+        "interest_rules": {
+          "type": "object",
+          "properties": {
+            "accrue_on": { "type": "string", "enum": ["CURRENT_BALANCE", "PDL_ADJUSTED_BALANCE", "ORIGINAL_BALANCE"] },
+            "shortfall_treatment": { "type": "string", "enum": ["CARRY", "CAPITALIZE", "WRITE_OFF"] }
+          }
+        },
+        "principal_rules": {
+          "type": "object",
+          "properties": {
+            "distribution_type": { "type": "string", "enum": ["SEQUENTIAL", "PRO_RATA", "TARGET_OC", "CUSTOM"] },
+            "allocation_weight": { "type": "string", "enum": ["BALANCE", "ORIGINAL_BALANCE", "FACTOR"] }
+          }
+        }
+      }
+    },
+    "coupon": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["FIXED", "FLOAT", "WAC", "VARIABLE"] },
+        "fixed_rate": { "type": "number" },
+        "index": { "type": "string" },
+        "margin": { "type": "number" },
+        "variable_cap": { 
+            "type": "string", 
+            "description": "Reference to a variable ID (e.g., 'NetWAC') that caps the coupon."
+        },
+        "variable_floor": { "type": "string" },
+        "cap": { "type": "number" },
+        "floor": { "type": "number" }
+      }
+    },
+    "fee": {
+      "type": "object",
+      "required": ["id", "seniority", "pay_from_fund", "amount_rule", "unpaid_treatment"],
+      "properties": {
+        "id": { "type": "string" },
+        "seniority": { "type": "integer" },
+        "pay_from_fund": { "type": "string" },
+        "amount_rule": { "type": "string" },
+        "unpaid_treatment": { "type": "string" }
+      }
+    },
+    "account": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "target_rule": { "type": "string" }
+      }
+    },
+    "fund": {
+      "type": "object",
+      "required": ["id", "description"],
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "ledger": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" }
+      }
+    },
+    "test": {
+      "type": "object",
+      "required": ["id", "kind", "calc", "threshold", "pass_if", "effects"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["DELINQ", "CUMLOSS", "OC", "IC", "STEPDOWN", "CUSTOM"] },
+        "calc": {
+          "type": "object",
+          "required": ["value_rule"],
+          "properties": {
+            "value_rule": { "type": "string" },
+            "rolling_average_months": { "type": "integer", "default": 1, "description": "If >1, calculates rolling avg of value_rule." },
+            "numerator_rule": { "type": "string" },
+            "denominator_rule": { "type": "string" }
+          }
+        },
+        "threshold": {
+          "type": "object",
+          "required": ["rule"],
+          "properties": {
+            "rule": { "type": "string" }
+          }
+        },
+        "pass_if": { "type": "string", "enum": ["VALUE_LEQ_THRESHOLD", "VALUE_LT_THRESHOLD", "VALUE_GEQ_THRESHOLD", "VALUE_GT_THRESHOLD"] },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["set_flag"],
+            "properties": {
+              "set_flag": { "type": "string" },
+              "flag_value_if_pass": { "type": "boolean", "default": true }
+            }
+          }
+        }
+      }
+    },
+    "waterfall": {
+      "type": "object",
+      "required": ["steps"],
+      "properties": { "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } } }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "from_fund", "action", "amount_rule"],
+      "properties": {
+        "id": { "type": "string" },
+        "condition": { "type": "string", "default": "true" },
+        "from_fund": { "type": "string" },
+        "action": {
+          "type": "string",
+          "enum": [
+            "PAY_FEE", "PAY_BOND_INTEREST", "PAY_BOND_PRINCIPAL",
+            "REIMBURSE_ADVANCES", "TRANSFER_FUND", "DRAW_ACCOUNT",
+            "REPLENISH_ACCOUNT", "ALLOCATE_TO_RESIDUAL", "SET_VARIABLE"
+          ]
+        },
+        "to": { "type": "string" },
+        "group": { "type": "string" },
+        "allocation": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "enum": ["SEQUENTIAL", "PRO_RATA", "TARGET", "CUSTOM"] }
+          }
+        },
+        "amount_rule": { "type": "string" },
+        "cap_rule": { "type": "string" },
+        "unpaid_treatment": { "type": "string" },
+        "unpaid_ledger_id": { "type": "string" }
+      }
+    },
+    "loss_allocation": {
+      "type": "object",
+      "required": ["loss_source_rule", "write_down_order"],
+      "properties": {
+        "loss_source_rule": { "type": "string" },
+        "write_down_order": { "type": "array", "items": { "type": "string" } },
+        "write_down_style": { "type": "string", "enum": ["REDUCE_BALANCE", "PDL_LEDGER"] }
+      }
+    },
+    "hedge": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["SWAP", "CAP", "FLOOR"] },
+        "notional_schedule": { 
+           "type": "array", 
+           "items": { "type": "object", "properties": { "date": {"type": "string"}, "amount": {"type": "number"} } } 
+        },
+        "pay_leg": { "$ref": "#/$defs/coupon" },
+        "receive_leg": { "$ref": "#/$defs/coupon" }
+      }
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "cleanup_call": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "threshold_rule": { "type": "string" }
+          }
+        }
+      }
+    },
+    "reporting": {
+      "type": "object",
+      "required": ["outputs"],
+      "properties": {
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "tranche_cashflows": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    }
+  }
+}
