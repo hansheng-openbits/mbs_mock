@@ -1,0 +1,168 @@
+{
+  "original_balance": 250000000.0,
+  "current_balance": 246500000.0,
+  "wac": 0.051478,
+  "wam": 328,
+  "pool_type": "FIXED_RATE",
+  "cutoff_date": "2024-01-01",
+  "as_of_date": "2024-03-31",
+  "model_interface": {
+    "kind": "LOAN_LEVEL_SIM",
+    "inputs_required": [
+      "loan_tape_csv",
+      "servicer_remits"
+    ]
+  },
+  "loan_data": {
+    "schema_ref": {
+      "format": "csv",
+      "source_uri": "sample_data/loan_tape.csv"
+    }
+  },
+  "delinquency_rate": 0.045,
+  "cpr_assumption": 0.08,
+  "cdr_assumption": 0.02,
+  "severity_assumption": 0.35,
+  "loans": [
+    {
+      "loan_id": "L0001",
+      "original_balance": 40000000,
+      "current_balance": 39440000.0,
+      "note_rate": 0.0485,
+      "remaining_term_months": 348,
+      "state": "CA",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "REFI",
+      "ltv": 0.72,
+      "fico": 746,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0002",
+      "original_balance": 35000000,
+      "current_balance": 34510000.0,
+      "note_rate": 0.051,
+      "remaining_term_months": 336,
+      "state": "TX",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "PURCHASE",
+      "ltv": 0.69,
+      "fico": 734,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0003",
+      "original_balance": 30000000,
+      "current_balance": 29580000.0,
+      "note_rate": 0.054,
+      "remaining_term_months": 330,
+      "state": "FL",
+      "property_type": "CONDO",
+      "occupancy": "OWNER",
+      "purpose": "REFI",
+      "ltv": 0.75,
+      "fico": 721,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0004",
+      "original_balance": 28000000,
+      "current_balance": 27608000.0,
+      "note_rate": 0.0495,
+      "remaining_term_months": 312,
+      "state": "NY",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "PURCHASE",
+      "ltv": 0.67,
+      "fico": 758,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0005",
+      "original_balance": 27000000,
+      "current_balance": 26622000.0,
+      "note_rate": 0.0575,
+      "remaining_term_months": 300,
+      "state": "NJ",
+      "property_type": "SFR",
+      "occupancy": "INVESTOR",
+      "purpose": "REFI",
+      "ltv": 0.78,
+      "fico": 706,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0006",
+      "original_balance": 25000000,
+      "current_balance": 24650000.0,
+      "note_rate": 0.0505,
+      "remaining_term_months": 324,
+      "state": "IL",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "PURCHASE",
+      "ltv": 0.7,
+      "fico": 742,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0007",
+      "original_balance": 23000000,
+      "current_balance": 22678000.0,
+      "note_rate": 0.0525,
+      "remaining_term_months": 318,
+      "state": "AZ",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "REFI",
+      "ltv": 0.73,
+      "fico": 728,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0008",
+      "original_balance": 20000000,
+      "current_balance": 19720000.0,
+      "note_rate": 0.0465,
+      "remaining_term_months": 360,
+      "state": "NV",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "PURCHASE",
+      "ltv": 0.64,
+      "fico": 762,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0009",
+      "original_balance": 12000000,
+      "current_balance": 11832000.0,
+      "note_rate": 0.058,
+      "remaining_term_months": 294,
+      "state": "GA",
+      "property_type": "SFR",
+      "occupancy": "INVESTOR",
+      "purpose": "REFI",
+      "ltv": 0.8,
+      "fico": 699,
+      "rate_type": "FIXED"
+    },
+    {
+      "loan_id": "L0010",
+      "original_balance": 10000000,
+      "current_balance": 9860000.0,
+      "note_rate": 0.049,
+      "remaining_term_months": 342,
+      "state": "CO",
+      "property_type": "SFR",
+      "occupancy": "OWNER",
+      "purpose": "PURCHASE",
+      "ltv": 0.68,
+      "fico": 748,
+      "rate_type": "FIXED"
+    }
+  ]
+}
