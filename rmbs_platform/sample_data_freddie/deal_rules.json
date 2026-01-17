@@ -1,6 +1,6 @@
 {
   "meta": {
-    "deal_id": "SAMPLE_RMBS_2024",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
     "deal_name": "Freddie Mac Sample 2017-2020",
     "asset_type": "NON_AGENCY_RMBS",
     "version": "1.1"
@@ -64,6 +64,34 @@
         "Insurance"
       ],
       "advance_limit_rule": "collateral.current_balance * 0.02"
+    }
+  },
+  "collateral": {
+    "original_balance": 115147000.0,
+    "current_balance": 112438000.0,
+    "wac": 0.041708,
+    "wam": 321,
+    "model_interface": {
+      "kind": "LOAN_LEVEL_SIM",
+      "inputs_required": [
+        "loan_tape_csv",
+        "servicer_remits"
+      ]
+    },
+    "ml_config": {
+      "enabled": true,
+      "prepay_model_key": "prepay",
+      "default_model_key": "default",
+      "rate_scenario": "rally",
+      "start_rate": 0.045,
+      "feature_source": "simulated"
+    },
+    "loan_data": {
+      "schema_ref": {
+        "format": "csv",
+        "source_uri": "sample_data_freddie/loan_tape.csv"
+      },
+      "performance_uri": "sample_data_freddie/servicer_{period}.csv"
     }
   },
   "bonds": [

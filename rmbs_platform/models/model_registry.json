@@ -1,0 +1,26 @@
+{
+  "prepay": {
+    "model_type": "rsf",
+    "path": "rmbs_platform/models/rsf_prepayment_model.pkl",
+    "features": [
+      "RATE_INCENTIVE",
+      "BURNOUT_PROXY",
+      "CREDIT_SCORE",
+      "ORIGINAL_LTV",
+      "ORIGINAL_DEBT_TO_INCOME_RATIO",
+      "ORIGINAL_INTEREST_RATE"
+    ]
+  },
+  "default": {
+    "model_type": "cox",
+    "path": "rmbs_platform/models/cox_default_model.pkl",
+    "features": [
+      "CREDIT_SCORE",
+      "ORIGINAL_LTV",
+      "ORIGINAL_DEBT_TO_INCOME_RATIO",
+      "SATO",
+      "FICO_BUCKET",
+      "HIGH_LTV_FLAG"
+    ]
+  }
+}

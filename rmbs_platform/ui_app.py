@@ -21,6 +21,15 @@ def fetch_deals():
         st.warning("API server not reachable. Start FastAPI at 127.0.0.1:8000.")
     return []
 
+def fetch_model_registry():
+    try:
+        res = requests.get(f"{API_URL}/models/registry", timeout=5)
+        if res.status_code == 200:
+            return res.json().get("registry", {})
+    except RequestException:
+        pass
+    return {}
+
 # Sidebar: Persona Selection
 persona = st.sidebar.selectbox(
     "Select Persona",
@@ -163,12 +172,37 @@ elif persona == "Investor (Analytics)":
         cpr = st.slider("CPR (Prepayment)", 0.0, 0.50, 0.10)
         cdr = st.slider("CDR (Default)", 0.0, 0.20, 0.01)
         sev = st.slider("Severity", 0.0, 1.0, 0.40)
+        st.subheader("ML Models")
+        use_ml = st.checkbox("Use ML Prepay/Default Models", value=False)
+        registry = fetch_model_registry()
+        model_keys = sorted(registry.keys()) if registry else ["prepay", "default"]
+        prepay_model_key = st.selectbox("Prepay Model Key", model_keys, index=0)
+        default_model_key = st.selectbox("Default Model Key", model_keys, index=min(1, len(model_keys) - 1))
+        rate_scenario = st.selectbox("Rate Scenario", ["rally", "selloff", "base"], index=0)
+        start_rate = st.number_input("Start Rate", min_value=0.0, max_value=0.20, value=0.045, step=0.001)
+        feature_source = st.selectbox("ML Feature Source", ["simulated", "market_rates"], index=0)
+        origination_source_uri = st.text_input(
+            "Origination Tape Path (optional)",
+            placeholder="e.g. /path/to/combined_sampled_mortgages_2017_2020.csv",
+        )
         
     if st.button("Run Simulation"):
         with st.spinner("Running Cashflow Engine..."):
             try:
                 # 1. Start Job
-                payload = {"deal_id": deal_id, "cpr": cpr, "cdr": cdr, "severity": sev}
+                payload = {
+                    "deal_id": deal_id,
+                    "cpr": cpr,
+                    "cdr": cdr,
+                    "severity": sev,
+                    "use_ml_models": use_ml,
+                    "prepay_model_key": prepay_model_key if use_ml else None,
+                    "default_model_key": default_model_key if use_ml else None,
+                    "rate_scenario": rate_scenario if use_ml else None,
+                    "start_rate": start_rate if use_ml else None,
+                    "feature_source": feature_source if use_ml else None,
+                    "origination_source_uri": origination_source_uri if use_ml and origination_source_uri else None,
+                }
                 res = requests.post(f"{API_URL}/simulate", json=payload, timeout=10)
             except RequestException as e:
                 st.error(f"API not reachable: {e}")
@@ -218,6 +252,11 @@ elif persona == "Investor (Analytics)":
                                 sample_rows = warning.get("sample_rows")
                                 if sample_rows:
                                     st.dataframe(pd.DataFrame(sample_rows))
+
+                        model_info = payload.get("model_info")
+                        if model_info:
+                            st.subheader("Model Info")
+                            st.dataframe(pd.DataFrame([model_info]))
 
                         tabs = st.tabs(["Actuals (Servicer Tape)", "Simulated Projection", "Full Detail"])
 

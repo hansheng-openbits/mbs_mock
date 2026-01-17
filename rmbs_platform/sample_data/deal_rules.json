@@ -72,11 +72,18 @@
     "wac": 0.051478,
     "wam": 328,
     "model_interface": {
-      "kind": "LOAN_LEVEL_SIM",
+      "kind": "ML_PORTFOLIO",
       "inputs_required": [
         "loan_tape_csv",
         "servicer_remits"
       ]
+    },
+    "ml_config": {
+      "enabled": true,
+      "prepay_model_key": "prepay",
+      "default_model_key": "default",
+      "rate_scenario": "rally",
+      "start_rate": 0.045
     },
     "loan_data": {
       "schema_ref": {

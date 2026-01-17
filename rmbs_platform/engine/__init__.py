@@ -211,7 +211,71 @@ def run_simulation(
 
     remaining = max(0, horizon_periods - state.period_index)
     if remaining > 0:
-        future_cfs = model.generate_cashflows(remaining, cpr, cdr, severity, start_balance=latest_end_balance if latest_end_balance > 0 else None)
+        future_cfs = None
+        ml_kind = (collateral_json or {}).get("model_interface", {}).get("kind")
+        ml_config = (collateral_json or {}).get("ml_config", {}) or {}
+        ml_enabled = ml_config.get("enabled", False) or ml_kind in {"FREDDIE_MAC_ML", "ML_PORTFOLIO"}
+        loan_data = (collateral_json or {}).get("loan_data", {})
+        schema_ref = loan_data.get("schema_ref", {}) if isinstance(loan_data, dict) else {}
+        source_uri = schema_ref.get("source_uri")
+        perf_uri = loan_data.get("performance_uri")
+        if ml_enabled and source_uri:
+            try:
+                from pathlib import Path
+                from ..ml.models import StochasticRateModel, UniversalModel
+                from ..ml.portfolio import DataManager, SurveillanceEngine
+                import json
+
+                base_dir = Path(__file__).resolve().parents[1]
+                def _resolve(p: str) -> str:
+                    path = Path(p)
+                    return str(path if path.is_absolute() else (base_dir / p).resolve())
+
+                feature_source = ml_config.get("feature_source", "simulated")
+                orig_source = ml_config.get("origination_source_uri")
+                static_file = _resolve(orig_source) if orig_source else _resolve(source_uri)
+                perf_file = _resolve(perf_uri) if perf_uri else None
+                registry_path = (base_dir / "models" / "model_registry.json").resolve()
+                if registry_path.exists():
+                    registry = json.loads(registry_path.read_text())
+                else:
+                    registry = {}
+
+                prepay_key = ml_config.get("prepay_model_key", "prepay")
+                default_key = ml_config.get("default_model_key", "default")
+                prepay_path = registry.get(prepay_key, {}).get("path", str(base_dir / "models" / "rsf_prepayment_model.pkl"))
+                default_path = registry.get(default_key, {}).get("path", str(base_dir / "models" / "cox_default_model.pkl"))
+
+                data_mgr = DataManager(
+                    static_file,
+                    perf_file if perf_file and Path(perf_file).exists() else None,
+                    feature_source=feature_source,
+                )
+                pool = data_mgr.get_pool()
+                prepay_model = UniversalModel(prepay_path, "Prepay")
+                default_model = UniversalModel(default_path, "Default")
+
+                rate_scenario = ml_config.get("rate_scenario", "rally")
+                start_rate = ml_config.get("start_rate", 0.045)
+                vasicek = StochasticRateModel()
+                rates = vasicek.generate_paths(n_months=remaining, start_rate=start_rate, shock_scenario=rate_scenario)
+                surv = SurveillanceEngine(pool, prepay_model, default_model, feature_source=feature_source)
+                future_cfs = surv.run(rates)
+                if not future_cfs.empty:
+                    future_cfs = future_cfs.rename(columns={
+                        "Interest": "InterestCollected",
+                        "Principal": "PrincipalCollected",
+                        "Loss": "RealizedLoss",
+                        "EndBalance": "EndBalance",
+                    })
+            except Exception:
+                future_cfs = None
+
+        if future_cfs is None:
+            future_cfs = model.generate_cashflows(
+                remaining, cpr, cdr, severity,
+                start_balance=latest_end_balance if latest_end_balance > 0 else None
+            )
         for _, row in future_cfs.iterrows():
             period = int(row['Period']) + state.period_index
             state.deposit_funds("IAF", row['InterestCollected'])

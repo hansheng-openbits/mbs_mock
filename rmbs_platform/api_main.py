@@ -84,6 +84,15 @@ def _sanitize_json(value: Any) -> Any:
         return [_sanitize_json(v) for v in value]
     return value
 
+def _load_model_registry() -> Dict[str, Any]:
+    registry_path = Path(__file__).resolve().parent / "models" / "model_registry.json"
+    if not registry_path.exists():
+        return {}
+    try:
+        return json.loads(registry_path.read_text())
+    except Exception:
+        return {}
+
 def _normalize_perf_df(df: pd.DataFrame) -> pd.DataFrame:
     if "BondID" in df.columns and "BondId" not in df.columns:
         df = df.rename(columns={"BondID": "BondId"})
@@ -153,6 +162,13 @@ class SimRequest(BaseModel):
     cpr: float = 0.10
     cdr: float = 0.01
     severity: float = 0.40
+    use_ml_models: bool = False
+    prepay_model_key: Optional[str] = None
+    default_model_key: Optional[str] = None
+    rate_scenario: Optional[str] = None
+    start_rate: Optional[float] = None
+    feature_source: Optional[str] = None
+    origination_source_uri: Optional[str] = None
 
 # --- ENDPOINTS ---
 
@@ -260,9 +276,38 @@ async def start_simulation(req: SimRequest, background_tasks: BackgroundTasks):
         raise HTTPException(404, "Deal ID not found")
     if req.deal_id not in COLLATERAL_DB:
         raise HTTPException(400, "Collateral not uploaded for this deal")
+
+    if req.use_ml_models:
+        registry = _load_model_registry()
+        prepay_key = req.prepay_model_key or (COLLATERAL_DB.get(req.deal_id, {}).get("ml_config") or {}).get("prepay_model_key")
+        default_key = req.default_model_key or (COLLATERAL_DB.get(req.deal_id, {}).get("ml_config") or {}).get("default_model_key")
+        missing = []
+        if prepay_key and prepay_key not in registry:
+            missing.append(f"prepay_model_key '{prepay_key}'")
+        if default_key and default_key not in registry:
+            missing.append(f"default_model_key '{default_key}'")
+        if missing:
+            raise HTTPException(400, f"Invalid model keys: {', '.join(missing)}")
+        if req.feature_source and req.feature_source not in {"simulated", "market_rates"}:
+            raise HTTPException(400, f"Invalid feature_source '{req.feature_source}'")
     
     job_id = str(uuid.uuid4())
-    JOBS_DB[job_id] = {"status": "RUNNING"}
+    ml_overrides = {}
+    if req.use_ml_models:
+        ml_overrides["enabled"] = True
+        if req.prepay_model_key:
+            ml_overrides["prepay_model_key"] = req.prepay_model_key
+        if req.default_model_key:
+            ml_overrides["default_model_key"] = req.default_model_key
+        if req.rate_scenario:
+            ml_overrides["rate_scenario"] = req.rate_scenario
+        if req.start_rate is not None:
+            ml_overrides["start_rate"] = req.start_rate
+        if req.feature_source:
+            ml_overrides["feature_source"] = req.feature_source
+        if req.origination_source_uri:
+            ml_overrides["origination_source_uri"] = req.origination_source_uri
+    JOBS_DB[job_id] = {"status": "RUNNING", "ml_overrides": ml_overrides}
     
     # Send to background
     background_tasks.add_task(worker, job_id, req.deal_id, req.cpr, req.cdr, req.severity)
@@ -284,7 +329,8 @@ async def get_results(job_id: str):
             "reconciliation": job.get("reconciliation", []),
             "actuals_data": job.get("actuals_data", []),
             "last_actual_period": job.get("last_actual_period"),
-            "warnings": job.get("warnings", [])
+            "warnings": job.get("warnings", []),
+            "model_info": job.get("model_info", {})
         }
     if job['status'] == "FAILED":
         return {"status": "FAILED", "error": job.get("error", "Unknown error")}
@@ -296,6 +342,28 @@ def worker(job_id, deal_id, cpr, cdr, sev):
         deal_json = DEALS_DB[deal_id]
         collateral_json = COLLATERAL_DB.get(deal_id, deal_json.get("collateral", {}))
         performance_rows = PERFORMANCE_DB.get(deal_id, [])
+        ml_overrides = JOBS_DB.get(job_id, {}).get("ml_overrides", {})
+        if ml_overrides:
+            collateral_json = dict(collateral_json)
+            ml_config = dict(collateral_json.get("ml_config") or {})
+            ml_config.update(ml_overrides)
+            collateral_json["ml_config"] = ml_config
+
+        registry = _load_model_registry()
+        model_info = {}
+        if ml_overrides.get("enabled"):
+            prepay_key = ml_overrides.get("prepay_model_key") or (collateral_json.get("ml_config") or {}).get("prepay_model_key")
+            default_key = ml_overrides.get("default_model_key") or (collateral_json.get("ml_config") or {}).get("default_model_key")
+            model_info = {
+                "prepay_key": prepay_key,
+                "default_key": default_key,
+                "prepay_path": registry.get(prepay_key, {}).get("path") if prepay_key else None,
+                "default_path": registry.get(default_key, {}).get("path") if default_key else None,
+                "rate_scenario": ml_overrides.get("rate_scenario") or (collateral_json.get("ml_config") or {}).get("rate_scenario"),
+                "start_rate": ml_overrides.get("start_rate") or (collateral_json.get("ml_config") or {}).get("start_rate"),
+                "feature_source": ml_overrides.get("feature_source") or (collateral_json.get("ml_config") or {}).get("feature_source"),
+                "origination_source_uri": ml_overrides.get("origination_source_uri") or (collateral_json.get("ml_config") or {}).get("origination_source_uri"),
+            }
         df, reconciliation = run_simulation(deal_json, collateral_json, performance_rows, cpr, cdr, sev)
 
         actuals_data = _aggregate_performance(performance_rows)
@@ -344,7 +412,13 @@ def worker(job_id, deal_id, cpr, cdr, sev):
             "reconciliation": reconciliation,
             "actuals_data": actuals_data,
             "last_actual_period": last_actual_period,
-            "warnings": warnings
+            "warnings": warnings,
+            "model_info": model_info
         }
     except Exception as e:
         JOBS_DB[job_id] = {"status": "FAILED", "error": str(e)}
+
+
+@app.get("/models/registry", tags=["Models"])
+async def get_model_registry():
+    return {"registry": _load_model_registry()}
