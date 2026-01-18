@@ -81,8 +81,7 @@ class DataManager:
 
     def _load(self):
         if not Path(self.static_file).exists():
-            self.raw_df = self._generate_mock(1000)
-            return
+            raise FileNotFoundError(f"Origination tape not found: {self.static_file}")
 
         df = self._read_static(Path(self.static_file))
         df = self._normalize_static(df)
@@ -111,17 +110,13 @@ class DataManager:
         df["ORIGINAL_DEBT_TO_INCOME_RATIO"] = df.get("DTI", 0)
 
         if self.perf_file and Path(self.perf_file).exists():
-            df_perf = pd.read_csv(
-                self.perf_file,
-                sep="|",
-                usecols=["LOAN_SEQUENCE_NUMBER", "CURRENT_ACTUAL_UPB"],
-                low_memory=False,
-            )
-            df_perf.rename(columns={"LOAN_SEQUENCE_NUMBER": "LOAN_ID"}, inplace=True)
-            latest = df_perf.groupby("LOAN_ID")["CURRENT_ACTUAL_UPB"].last().reset_index()
-            df = pd.merge(df, latest, on="LOAN_ID", how="left")
-            df["CURRENT_UPB"] = df["CURRENT_ACTUAL_UPB"].fillna(df["ORIG_UPB"])
-            df = df[df["CURRENT_UPB"] > 0]
+            perf_latest = self._load_perf_balance(Path(self.perf_file))
+            if perf_latest is not None and not perf_latest.empty:
+                df = pd.merge(df, perf_latest, on="LOAN_ID", how="left")
+                df["CURRENT_UPB"] = df["CURRENT_UPB"].fillna(df["ORIG_UPB"])
+                df = df[df["CURRENT_UPB"] > 0]
+            else:
+                df["CURRENT_UPB"] = df["ORIG_UPB"]
         else:
             df["CURRENT_UPB"] = df["ORIG_UPB"]
 
@@ -129,6 +124,51 @@ class DataManager:
 
     def _generate_mock(self, n: int) -> pd.DataFrame:
         return pd.DataFrame({"ORIG_UPB": [300000] * n, "CURRENT_UPB": [300000] * n})
+
+    @staticmethod
+    def _load_perf_balance(path: Path) -> Optional[pd.DataFrame]:
+        # Freddie performance format (pipe-delimited)
+        try:
+            df_perf = pd.read_csv(
+                path,
+                sep="|",
+                usecols=["LOAN_SEQUENCE_NUMBER", "CURRENT_ACTUAL_UPB"],
+                low_memory=False,
+            )
+            df_perf.rename(
+                columns={
+                    "LOAN_SEQUENCE_NUMBER": "LOAN_ID",
+                    "CURRENT_ACTUAL_UPB": "CURRENT_UPB",
+                },
+                inplace=True,
+            )
+            latest = df_perf.groupby("LOAN_ID")["CURRENT_UPB"].last().reset_index()
+            return latest
+        except Exception:
+            pass
+
+        # Normalized loan-level perf (comma-delimited)
+        try:
+            df_perf = pd.read_csv(path, sep=",", low_memory=False)
+        except Exception:
+            return None
+
+        if "LoanId" in df_perf.columns:
+            df_perf = df_perf.rename(columns={"LoanId": "LOAN_ID"})
+        if "LOAN_ID" not in df_perf.columns:
+            return None
+
+        balance_col = None
+        for candidate in ["EndBalance", "CURRENT_UPB", "CURRENT_ACTUAL_UPB"]:
+            if candidate in df_perf.columns:
+                balance_col = candidate
+                break
+        if balance_col is None:
+            return None
+
+        df_perf = df_perf.rename(columns={balance_col: "CURRENT_UPB"})
+        latest = df_perf.groupby("LOAN_ID")["CURRENT_UPB"].last().reset_index()
+        return latest
 
     def get_pool(self) -> pd.DataFrame:
         return self.raw_df[self.raw_df["CURRENT_UPB"] > 0].copy()
@@ -141,11 +181,13 @@ class SurveillanceEngine:
         prepay_model: UniversalModel,
         default_model: UniversalModel,
         feature_source: str = "simulated",
+        rate_sensitivity: float = 1.0,
     ):
         self.pool = pool.copy()
         self.prepay = prepay_model
         self.default = default_model
         self.feature_source = feature_source
+        self.rate_sensitivity = rate_sensitivity
 
     def run(self, rate_path: np.ndarray) -> pd.DataFrame:
         loans = self.pool.copy()
@@ -186,6 +228,11 @@ class SurveillanceEngine:
             cpr = np.clip(base_cpr * cpr_mult, 0.0, 1.0)
             cdr = np.clip(base_cdr * cdr_mult, 0.0, 1.0)
 
+            if self.feature_source == "simulated":
+                rate_adj = 1.0 + (loans["RATE_INCENTIVE"] / 100.0) * float(self.rate_sensitivity)
+                rate_adj = np.clip(rate_adj, 0.1, 3.0)
+                cpr = np.clip(cpr * rate_adj, 0.0, 1.0)
+
             smm = 1 - (1 - cpr) ** (1 / 12)
             mdr = 1 - (1 - cdr) ** (1 / 12)
 
@@ -198,6 +245,7 @@ class SurveillanceEngine:
             prepay = (loans["Active_Bal"] - sched_prin) * smm
             default = (loans["Active_Bal"] - sched_prin - prepay) * mdr
             loss = default * 0.35
+            recoveries = default - loss
 
             loans["Active_Bal"] -= (sched_prin + prepay + default)
             loans["Active_Bal"] = loans["Active_Bal"].clip(lower=0)
@@ -205,11 +253,20 @@ class SurveillanceEngine:
             history.append({
                 "Period": t + 1,
                 "Market_Rate": float(curr_rate),
+                "RateMean": float(curr_rate),
+                "RateIncentiveMean": float(loans["RATE_INCENTIVE"].mean()),
+                "BurnoutMean": float(loans["BURNOUT_PROXY"].mean()),
                 "Interest": float(int_paid.sum()),
                 "Principal": float((sched_prin + prepay + default - loss).sum()),
                 "Loss": float(loss.sum()),
                 "CPR": float(cpr.mean()),
                 "EndBalance": float(loans["Active_Bal"].sum()),
+                "ScheduledInterest": float(int_paid.sum()),
+                "ScheduledPrincipal": float(sched_prin.sum()),
+                "Prepayment": float(prepay.sum()),
+                "Recoveries": float(recoveries.sum()),
+                "DefaultAmount": float(default.sum()),
+                "ServicerAdvances": 0.0,
             })
 
         return pd.DataFrame(history)

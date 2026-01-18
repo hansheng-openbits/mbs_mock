@@ -180,6 +180,7 @@ elif persona == "Investor (Analytics)":
         default_model_key = st.selectbox("Default Model Key", model_keys, index=min(1, len(model_keys) - 1))
         rate_scenario = st.selectbox("Rate Scenario", ["rally", "selloff", "base"], index=0)
         start_rate = st.number_input("Start Rate", min_value=0.0, max_value=0.20, value=0.045, step=0.001)
+        rate_sensitivity = st.number_input("Rate Sensitivity", min_value=0.0, max_value=5.0, value=1.0, step=0.1)
         feature_source = st.selectbox("ML Feature Source", ["simulated", "market_rates"], index=0)
         origination_source_uri = st.text_input(
             "Origination Tape Path (optional)",
@@ -200,6 +201,7 @@ elif persona == "Investor (Analytics)":
                     "default_model_key": default_model_key if use_ml else None,
                     "rate_scenario": rate_scenario if use_ml else None,
                     "start_rate": start_rate if use_ml else None,
+                    "rate_sensitivity": rate_sensitivity if use_ml else None,
                     "feature_source": feature_source if use_ml else None,
                     "origination_source_uri": origination_source_uri if use_ml and origination_source_uri else None,
                 }
@@ -240,8 +242,15 @@ elif persona == "Investor (Analytics)":
                         df = pd.DataFrame(data)
                         recon = payload.get("reconciliation", [])
                         actuals_data = payload.get("actuals_data", [])
+                        actuals_summary = payload.get("actuals_summary", [])
+                        simulated_summary = payload.get("simulated_summary", [])
                         last_actual_period = payload.get("last_actual_period")
                         warnings = payload.get("warnings", [])
+                        st.session_state["last_run"] = {
+                            "deal_id": deal_id,
+                            "simulated_summary": simulated_summary,
+                            "ml_status": None,
+                        }
                         
                         st.success("Simulation Complete")
                         
@@ -266,6 +275,9 @@ elif persona == "Investor (Analytics)":
                                 st.dataframe(pd.DataFrame(actuals_data))
                             else:
                                 st.info("No actuals data available from performance uploads.")
+                            if actuals_summary:
+                                st.subheader("Servicer Aggregate Summary")
+                                st.dataframe(pd.DataFrame(actuals_summary))
 
                         with tabs[1]:
                             if last_actual_period is not None:
@@ -278,18 +290,102 @@ elif persona == "Investor (Analytics)":
                                 st.line_chart(sim_df.set_index("Period")[bond_cols])
                             else:
                                 st.info("No simulated periods available.")
+                            if simulated_summary:
+                                st.subheader("Simulated Aggregate Summary")
+                                st.dataframe(pd.DataFrame(simulated_summary))
+                            ml_cols = [
+                                "Var.MLUsed",
+                                "Var.ModelSource",
+                                "Var.MLPoolCount",
+                                "Var.MLPoolBalance",
+                                "Var.MLSourceURI",
+                                "Var.MLFeatureSource",
+                                "Var.MLPrepayStrategy",
+                                "Var.MLDefaultStrategy",
+                                "Var.MLRateScenario",
+                                "Var.MLStartRate",
+                                "Var.MLRateFirst",
+                                "Var.MLRateMean",
+                                "Var.MLRateSensitivity",
+                            ]
+                            if not sim_df.empty and any(c in sim_df.columns for c in ml_cols):
+                                last_sim = sim_df.iloc[-1]
+                                ml_status = {c.replace("Var.", ""): last_sim.get(c) for c in ml_cols if c in sim_df.columns}
+                                if ml_status:
+                                    st.subheader("ML Status (Latest Sim Period)")
+                                    extra_cols = ["RateMean", "RateIncentiveMean", "BurnoutMean", "CPR"]
+                                    for col in extra_cols:
+                                        if col in sim_df.columns:
+                                            ml_status[col] = last_sim.get(col)
+                                    ml_status_df = pd.DataFrame([ml_status])
+                                    st.dataframe(ml_status_df)
+                                    st.download_button(
+                                        "Download ML Status CSV",
+                                        ml_status_df.to_csv(index=False),
+                                        "ml_status_simulated.csv"
+                                    )
+                                    st.session_state["last_run"]["ml_status"] = ml_status
                             st.dataframe(sim_df)
+                            if actuals_summary:
+                                st.subheader("Servicer Aggregate Summary")
+                                st.dataframe(pd.DataFrame(actuals_summary))
 
                         with tabs[2]:
                             st.subheader("Detailed Tape (Full)")
                             st.dataframe(df)
                             st.download_button("Download CSV", df.to_csv(index=False), "results.csv")
+                            if simulated_summary:
+                                st.subheader("Simulated Aggregate Summary")
+                                st.dataframe(pd.DataFrame(simulated_summary))
+                            if not df.empty and any(c in df.columns for c in ml_cols):
+                                last_full = df.iloc[-1]
+                                ml_status_full = {c.replace("Var.", ""): last_full.get(c) for c in ml_cols if c in df.columns}
+                                if ml_status_full:
+                                    st.subheader("ML Status (Latest Period)")
+                                    ml_status_full_df = pd.DataFrame([ml_status_full])
+                                    st.dataframe(ml_status_full_df)
+                                    st.download_button(
+                                        "Download ML Status CSV",
+                                        ml_status_full_df.to_csv(index=False),
+                                        "ml_status_full.csv"
+                                    )
+                            if actuals_summary:
+                                st.subheader("Servicer Aggregate Summary")
+                                st.dataframe(pd.DataFrame(actuals_summary))
 
                         if recon:
                             st.subheader("Servicer Reconciliation")
                             st.dataframe(pd.DataFrame(recon))
                         else:
                             st.info("No reconciliation issues detected.")
+                        last_run = st.session_state.get("last_run_prev")
+                        curr_run = st.session_state.get("last_run")
+                        if last_run and curr_run and last_run.get("deal_id") == curr_run.get("deal_id"):
+                            st.subheader("Run Comparison (Latest vs Previous)")
+                            left = pd.DataFrame([last_run.get("ml_status", {})])
+                            right = pd.DataFrame([curr_run.get("ml_status", {})])
+                            if not left.empty and not right.empty:
+                                left["Run"] = "Previous"
+                                right["Run"] = "Latest"
+                                compare_df = pd.concat([left, right], ignore_index=True)
+                                st.dataframe(compare_df)
+                            prev_summary = pd.DataFrame(last_run.get("simulated_summary", []) or [])
+                            curr_summary = pd.DataFrame(curr_run.get("simulated_summary", []) or [])
+                            if not prev_summary.empty and not curr_summary.empty and "Period" in prev_summary.columns and "Period" in curr_summary.columns:
+                                merged = prev_summary.merge(curr_summary, on="Period", suffixes=("_prev", "_latest"))
+                                diff_cols = []
+                                for col in prev_summary.columns:
+                                    if col == "Period":
+                                        continue
+                                    prev_col = f"{col}_prev"
+                                    latest_col = f"{col}_latest"
+                                    if prev_col in merged.columns and latest_col in merged.columns:
+                                        merged[f"{col}_delta"] = merged[latest_col] - merged[prev_col]
+                                        diff_cols.append(f"{col}_delta")
+                                if diff_cols:
+                                    st.subheader("Simulated Summary Deltas")
+                                    st.dataframe(merged[["Period"] + diff_cols])
+                        st.session_state["last_run_prev"] = st.session_state.get("last_run")
                     else:
                         err = payload.get("error") if r2 is not None else None
                         st.error(f"Simulation Failed{': ' + err if err else ''}")

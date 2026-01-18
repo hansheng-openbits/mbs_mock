@@ -36,7 +36,20 @@ class CollateralModel:
         
         for t in range(1, periods + 1):
             if balance <= 0:
-                rows.append([t, 0, 0, 0, 0, 0, 0, 0, 0])
+                rows.append({
+                    "Period": t,
+                    "BeginBalance": 0.0,
+                    "EndBalance": 0.0,
+                    "InterestCollected": 0.0,
+                    "PrincipalCollected": 0.0,
+                    "RealizedLoss": 0.0,
+                    "DefaultAmount": 0.0,
+                    "ScheduledInterest": 0.0,
+                    "ScheduledPrincipal": 0.0,
+                    "Prepayment": 0.0,
+                    "Recoveries": 0.0,
+                    "ServicerAdvances": 0.0,
+                })
                 continue
 
             # 1. Calculate Rates (SMM = Single Monthly Mortality)
@@ -64,6 +77,7 @@ class CollateralModel:
             # 4. Aggregates
             total_prin_collected = sched_prin + prepay_amount + recovery_amount
             total_int_collected = interest_due  # Simplified (ignoring servicer advances logic for now)
+            servicer_advances = max(0.0, interest_due - total_int_collected)
             
             # 5. Update Balance
             balance = balance - sched_prin - default_amount - prepay_amount
@@ -75,7 +89,12 @@ class CollateralModel:
                 "InterestCollected": total_int_collected,
                 "PrincipalCollected": total_prin_collected, # Note: Recoveries usually go to Prin in RMBS
                 "RealizedLoss": loss_amount,
-                "DefaultAmount": default_amount
+                "DefaultAmount": default_amount,
+                "ScheduledInterest": interest_due,
+                "ScheduledPrincipal": sched_prin,
+                "Prepayment": prepay_amount,
+                "Recoveries": recovery_amount,
+                "ServicerAdvances": servicer_advances,
             })
             
         return pd.DataFrame(rows)

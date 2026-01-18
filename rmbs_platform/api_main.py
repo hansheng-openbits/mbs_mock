@@ -1,8 +1,13 @@
 # api_main.py
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
-from pathlib import Path
 import json
 import re
 import uuid
@@ -11,7 +16,10 @@ import io
 import math
 
 # Import our engine
-from engine import run_simulation
+try:
+    from .engine import run_simulation
+except ImportError:  # Fallback for running as a script
+    from rmbs_platform.engine import run_simulation
 
 app = FastAPI(title="RMBS Engine API", version="1.0")
 
@@ -120,6 +128,10 @@ def _aggregate_performance(performance_rows: List[Dict[str, Any]]) -> List[Dict[
         "ServicerAdvances",
     ]
     numeric_cols = [c for c in numeric_candidates if c in df.columns]
+    for col in numeric_candidates:
+        if col not in df.columns:
+            df[col] = 0.0
+    numeric_cols = list(numeric_candidates)
 
     if "LoanId" in df.columns:
         loan_df = df[df["LoanId"].notna()].copy()
@@ -167,6 +179,7 @@ class SimRequest(BaseModel):
     default_model_key: Optional[str] = None
     rate_scenario: Optional[str] = None
     start_rate: Optional[float] = None
+    rate_sensitivity: Optional[float] = None
     feature_source: Optional[str] = None
     origination_source_uri: Optional[str] = None
 
@@ -303,6 +316,8 @@ async def start_simulation(req: SimRequest, background_tasks: BackgroundTasks):
             ml_overrides["rate_scenario"] = req.rate_scenario
         if req.start_rate is not None:
             ml_overrides["start_rate"] = req.start_rate
+        if req.rate_sensitivity is not None:
+            ml_overrides["rate_sensitivity"] = req.rate_sensitivity
         if req.feature_source:
             ml_overrides["feature_source"] = req.feature_source
         if req.origination_source_uri:
@@ -328,6 +343,8 @@ async def get_results(job_id: str):
             "data": job['data'],
             "reconciliation": job.get("reconciliation", []),
             "actuals_data": job.get("actuals_data", []),
+            "actuals_summary": job.get("actuals_summary", []),
+            "simulated_summary": job.get("simulated_summary", []),
             "last_actual_period": job.get("last_actual_period"),
             "warnings": job.get("warnings", []),
             "model_info": job.get("model_info", {})
@@ -354,24 +371,100 @@ def worker(job_id, deal_id, cpr, cdr, sev):
         if ml_overrides.get("enabled"):
             prepay_key = ml_overrides.get("prepay_model_key") or (collateral_json.get("ml_config") or {}).get("prepay_model_key")
             default_key = ml_overrides.get("default_model_key") or (collateral_json.get("ml_config") or {}).get("default_model_key")
+            prepay_path = registry.get(prepay_key, {}).get("path") if prepay_key else None
+            default_path = registry.get(default_key, {}).get("path") if default_key else None
             model_info = {
                 "prepay_key": prepay_key,
                 "default_key": default_key,
-                "prepay_path": registry.get(prepay_key, {}).get("path") if prepay_key else None,
-                "default_path": registry.get(default_key, {}).get("path") if default_key else None,
+                "prepay_path": prepay_path,
+                "default_path": default_path,
                 "rate_scenario": ml_overrides.get("rate_scenario") or (collateral_json.get("ml_config") or {}).get("rate_scenario"),
                 "start_rate": ml_overrides.get("start_rate") or (collateral_json.get("ml_config") or {}).get("start_rate"),
                 "feature_source": ml_overrides.get("feature_source") or (collateral_json.get("ml_config") or {}).get("feature_source"),
                 "origination_source_uri": ml_overrides.get("origination_source_uri") or (collateral_json.get("ml_config") or {}).get("origination_source_uri"),
             }
         df, reconciliation = run_simulation(deal_json, collateral_json, performance_rows, cpr, cdr, sev)
+        if model_info:
+            model_info["ml_used"] = False
+            if not df.empty and "Var.MLUsed" in df.columns:
+                ml_rows = df[df["Period"] > _latest_actual_period(_aggregate_performance(performance_rows))]
+                if not ml_rows.empty:
+                    model_info["ml_used"] = bool(ml_rows["Var.MLUsed"].any())
 
-        actuals_data = _aggregate_performance(performance_rows)
-        last_actual_period = _latest_actual_period(actuals_data)
+        actuals_summary = _aggregate_performance(performance_rows)
+        last_actual_period = _latest_actual_period(actuals_summary)
+        actuals_report = []
+        simulated_summary = []
+        if last_actual_period is not None and not df.empty:
+            actuals_report = df[df["Period"] <= last_actual_period].to_dict(orient="records")
+        if not df.empty:
+            sim_df = df if last_actual_period is None else df[df["Period"] > last_actual_period]
+            summary_cols = [
+                "Period",
+                "Var.InputInterestCollected",
+                "Var.InputPrincipalCollected",
+                "Var.InputRealizedLoss",
+                "Var.InputEndBalance",
+                "Var.InputPrepayment",
+                "Var.InputScheduledPrincipal",
+                "Var.InputScheduledInterest",
+                "Var.InputServicerAdvances",
+                "Var.InputRecoveries",
+            ]
+            existing_cols = [c for c in summary_cols if c in sim_df.columns]
+            if "Period" in existing_cols:
+                summary_df = sim_df[existing_cols].copy()
+                summary_df = summary_df.rename(columns={
+                    "Var.InputInterestCollected": "InterestCollected",
+                    "Var.InputPrincipalCollected": "PrincipalCollected",
+                    "Var.InputRealizedLoss": "RealizedLoss",
+                    "Var.InputEndBalance": "EndBalance",
+                    "Var.InputPrepayment": "Prepayment",
+                    "Var.InputScheduledPrincipal": "ScheduledPrincipal",
+                    "Var.InputScheduledInterest": "ScheduledInterest",
+                    "Var.InputServicerAdvances": "ServicerAdvances",
+                    "Var.InputRecoveries": "Recoveries",
+                })
+                simulated_summary = summary_df.to_dict(orient="records")
 
         warnings: List[Dict[str, Any]] = []
-        if actuals_data and "Var.PoolEndBalance" in df.columns:
-            actuals_df = pd.DataFrame(actuals_data)
+        if ml_overrides.get("enabled"):
+            feature_source = model_info.get("feature_source")
+            rate_scenario = model_info.get("rate_scenario")
+            start_rate = model_info.get("start_rate")
+            if feature_source and feature_source != "simulated" and (rate_scenario or start_rate is not None):
+                warnings.append({
+                    "type": "ML_RATE_SCENARIO_IGNORED",
+                    "message": "Rate scenario/start rate do not affect ML when feature_source is not 'simulated'."
+                })
+            if model_info.get("prepay_path") and not Path(model_info["prepay_path"]).exists():
+                warnings.append({
+                    "type": "ML_MODEL_MISSING",
+                    "message": f"Prepay model file not found: {model_info['prepay_path']}"
+                })
+            if model_info.get("default_path") and not Path(model_info["default_path"]).exists():
+                warnings.append({
+                    "type": "ML_MODEL_MISSING",
+                    "message": f"Default model file not found: {model_info['default_path']}"
+                })
+            loan_data = (collateral_json or {}).get("loan_data", {})
+            schema_ref = loan_data.get("schema_ref", {}) if isinstance(loan_data, dict) else {}
+            source_uri = schema_ref.get("source_uri")
+            if not source_uri:
+                warnings.append({
+                    "type": "ML_MISSING_SOURCE_URI",
+                    "message": "ML models enabled but no loan_data.schema_ref.source_uri provided. Falling back to rule-based cashflows."
+                })
+
+            if "Var.ModelSource" in df.columns and last_actual_period is not None:
+                sim_flags = df[df["Period"] > last_actual_period]["Var.ModelSource"]
+                if not sim_flags.empty and "ML" not in sim_flags.unique():
+                    warnings.append({
+                        "type": "ML_NOT_APPLIED",
+                        "message": "ML models enabled but simulation used rule-based cashflows. Check model files and input tapes."
+                    })
+        if actuals_summary and "Var.PoolEndBalance" in df.columns:
+            actuals_df = pd.DataFrame(actuals_summary)
             compare_cols = ["Period", "EndBalance", "RealizedLoss"]
             actuals_df = actuals_df[[c for c in compare_cols if c in actuals_df.columns]]
             merged = actuals_df.merge(
@@ -402,7 +495,9 @@ def worker(job_id, deal_id, cpr, cdr, sev):
         data_records = data_records.to_dict(orient="records")
         data_records = _sanitize_json(data_records)
         reconciliation = _sanitize_json(reconciliation)
-        actuals_data = _sanitize_json(actuals_data)
+        actuals_report = _sanitize_json(actuals_report)
+        simulated_summary = _sanitize_json(simulated_summary)
+        actuals_summary = _sanitize_json(actuals_summary)
         warnings = _sanitize_json(warnings)
 
         # Store result as JSON compatible list
@@ -410,7 +505,9 @@ def worker(job_id, deal_id, cpr, cdr, sev):
             "status": "COMPLETED",
             "data": data_records,
             "reconciliation": reconciliation,
-            "actuals_data": actuals_data,
+            "actuals_data": actuals_report,
+            "actuals_summary": actuals_summary,
+            "simulated_summary": simulated_summary,
             "last_actual_period": last_actual_period,
             "warnings": warnings,
             "model_info": model_info

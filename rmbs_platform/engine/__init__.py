@@ -1,5 +1,6 @@
 # engine/__init__.py
 import pandas as pd
+import numpy as np
 from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
 from .loader import DealLoader
@@ -90,7 +91,8 @@ def run_simulation(
     cdr: float,
     severity: float,
     horizon_periods: int = 60,
-    strict_balance_check: bool = True
+    strict_balance_check: bool = True,
+    apply_waterfall_to_actuals: bool = True
 ) -> tuple[pd.DataFrame, List[Dict[str, Any]]]:
     """
     Wrapper function to execute a full simulation from JSON input.
@@ -144,9 +146,25 @@ def run_simulation(
         df_asset = df_asset.sort_values("Period")
         for _, row in df_asset.iterrows():
             period = int(row["Period"])
-            state.deposit_funds("IAF", float(row.get("InterestCollected", 0.0) or 0.0))
-            state.deposit_funds("PAF", float(row.get("PrincipalCollected", 0.0) or 0.0))
-            state.set_variable("RealizedLoss", float(row.get("RealizedLoss", 0.0) or 0.0))
+            interest_collected = float(row.get("InterestCollected", 0.0) or 0.0)
+            principal_collected = float(row.get("PrincipalCollected", 0.0) or 0.0)
+            realized_loss = float(row.get("RealizedLoss", 0.0) or 0.0)
+            prepayment = float(row.get("Prepayment", 0.0) or 0.0)
+            scheduled_principal = float(row.get("ScheduledPrincipal", 0.0) or 0.0)
+            scheduled_interest = float(row.get("ScheduledInterest", 0.0) or 0.0)
+            servicer_advances = float(row.get("ServicerAdvances", 0.0) or 0.0)
+            recoveries = float(row.get("Recoveries", 0.0) or 0.0)
+            state.deposit_funds("IAF", interest_collected)
+            state.deposit_funds("PAF", principal_collected)
+            state.set_variable("RealizedLoss", realized_loss)
+            state.set_variable("InputInterestCollected", interest_collected)
+            state.set_variable("InputPrincipalCollected", principal_collected)
+            state.set_variable("InputRealizedLoss", realized_loss)
+            state.set_variable("InputPrepayment", prepayment)
+            state.set_variable("InputScheduledPrincipal", scheduled_principal)
+            state.set_variable("InputScheduledInterest", scheduled_interest)
+            state.set_variable("InputServicerAdvances", servicer_advances)
+            state.set_variable("InputRecoveries", recoveries)
             if "EndBalance" in row and row.get("EndBalance") is not None:
                 try:
                     end_bal = float(row.get("EndBalance"))
@@ -155,12 +173,30 @@ def run_simulation(
                 if end_bal is not None:
                     state.collateral["current_balance"] = end_bal
                     state.set_variable("PoolEndBalance", end_bal)
+                    state.set_variable("InputEndBalance", end_bal)
             if "PoolStatus" in row and row.get("PoolStatus") is not None:
                 state.set_variable("PoolStatus", str(row.get("PoolStatus")))
-            if period in bond_balances_by_period:
-                for bond_id, bal in bond_balances_by_period[period].items():
+            state.set_variable("ModelSource", "Actuals")
+            state.set_variable("MLUsed", False)
+            if apply_waterfall_to_actuals:
+                runner.run_period(state)
+            else:
+                runner.evaluate_period(state)
+            tape_balances = bond_balances_by_period.get(period, {})
+            if tape_balances:
+                for bond_id, bal in tape_balances.items():
                     if bond_id in state.bonds:
-                        state.bonds[bond_id].current_balance = bal
+                        model_bal = state.bonds[bond_id].current_balance
+                        delta = model_bal - bal
+                        if abs(delta) > 1.0:
+                            reconciliation.append({
+                                "period": period,
+                                "bond_id": bond_id,
+                                "model_balance": model_bal,
+                                "tape_balance": bal,
+                                "delta": delta,
+                                "status": "BALANCE_MISMATCH"
+                            })
                     else:
                         reconciliation.append({
                             "period": period,
@@ -171,7 +207,7 @@ def run_simulation(
                             "status": "UNKNOWN_BOND"
                         })
                 for bond_id, bond_state in state.bonds.items():
-                    if bond_id not in bond_balances_by_period[period]:
+                    if bond_id not in tape_balances:
                         reconciliation.append({
                             "period": period,
                             "bond_id": bond_id,
@@ -180,7 +216,6 @@ def run_simulation(
                             "delta": None,
                             "status": "MISSING_IN_TAPE"
                         })
-            runner.evaluate_period(state)
             current_date = start_date + timedelta(days=30 * period)
             state.snapshot(current_date)
 
@@ -193,7 +228,7 @@ def run_simulation(
     if latest_periods:
         latest_period = max(latest_periods)
         state.period_index = max(state.period_index, latest_period)
-        if latest_period in bond_balances_by_period:
+        if not apply_waterfall_to_actuals and latest_period in bond_balances_by_period:
             for bond_id, bal in bond_balances_by_period[latest_period].items():
                 if bond_id in state.bonds:
                     state.bonds[bond_id].current_balance = bal
@@ -212,18 +247,25 @@ def run_simulation(
     remaining = max(0, horizon_periods - state.period_index)
     if remaining > 0:
         future_cfs = None
+        ml_used = False
         ml_kind = (collateral_json or {}).get("model_interface", {}).get("kind")
         ml_config = (collateral_json or {}).get("ml_config", {}) or {}
         ml_enabled = ml_config.get("enabled", False) or ml_kind in {"FREDDIE_MAC_ML", "ML_PORTFOLIO"}
         loan_data = (collateral_json or {}).get("loan_data", {})
         schema_ref = loan_data.get("schema_ref", {}) if isinstance(loan_data, dict) else {}
-        source_uri = schema_ref.get("source_uri")
+        source_uri = schema_ref.get("source_uri") or ml_config.get("origination_source_uri")
         perf_uri = loan_data.get("performance_uri")
+        if ml_enabled and not source_uri:
+            raise ValueError("ML models enabled but no origination source URI provided.")
         if ml_enabled and source_uri:
             try:
                 from pathlib import Path
-                from ..ml.models import StochasticRateModel, UniversalModel
-                from ..ml.portfolio import DataManager, SurveillanceEngine
+                try:
+                    from ..ml.models import StochasticRateModel, UniversalModel
+                    from ..ml.portfolio import DataManager, SurveillanceEngine
+                except ImportError:
+                    from rmbs_platform.ml.models import StochasticRateModel, UniversalModel
+                    from rmbs_platform.ml.portfolio import DataManager, SurveillanceEngine
                 import json
 
                 base_dir = Path(__file__).resolve().parents[1]
@@ -252,24 +294,43 @@ def run_simulation(
                     feature_source=feature_source,
                 )
                 pool = data_mgr.get_pool()
+                if pool.empty:
+                    raise ValueError("ML pool is empty after loading origination tape.")
+                pool_balance = float(pool.get("CURRENT_UPB", 0).sum())
+                if pool_balance <= 0:
+                    raise ValueError("ML pool has non-positive balance after loading origination tape.")
                 prepay_model = UniversalModel(prepay_path, "Prepay")
                 default_model = UniversalModel(default_path, "Default")
+                state.set_variable("MLPoolCount", int(len(pool)))
+                state.set_variable("MLPoolBalance", pool_balance)
+                state.set_variable("MLSourceURI", static_file)
+                state.set_variable("MLFeatureSource", feature_source)
+                state.set_variable("MLPrepayStrategy", prepay_model.strategy)
+                state.set_variable("MLDefaultStrategy", default_model.strategy)
 
                 rate_scenario = ml_config.get("rate_scenario", "rally")
                 start_rate = ml_config.get("start_rate", 0.045)
+                rate_sensitivity = ml_config.get("rate_sensitivity", 1.0)
                 vasicek = StochasticRateModel()
                 rates = vasicek.generate_paths(n_months=remaining, start_rate=start_rate, shock_scenario=rate_scenario)
-                surv = SurveillanceEngine(pool, prepay_model, default_model, feature_source=feature_source)
+                state.set_variable("MLRateScenario", rate_scenario)
+                state.set_variable("MLStartRate", float(start_rate))
+                state.set_variable("MLRateFirst", float(rates[0]) if len(rates) > 0 else None)
+                state.set_variable("MLRateMean", float(np.mean(rates)) if len(rates) > 0 else None)
+                state.set_variable("MLRateSensitivity", float(rate_sensitivity))
+                surv = SurveillanceEngine(pool, prepay_model, default_model, feature_source=feature_source, rate_sensitivity=rate_sensitivity)
                 future_cfs = surv.run(rates)
-                if not future_cfs.empty:
-                    future_cfs = future_cfs.rename(columns={
-                        "Interest": "InterestCollected",
-                        "Principal": "PrincipalCollected",
-                        "Loss": "RealizedLoss",
-                        "EndBalance": "EndBalance",
-                    })
-            except Exception:
-                future_cfs = None
+                if future_cfs.empty:
+                    raise ValueError("ML cashflow generation returned no rows.")
+                ml_used = True
+                future_cfs = future_cfs.rename(columns={
+                    "Interest": "InterestCollected",
+                    "Principal": "PrincipalCollected",
+                    "Loss": "RealizedLoss",
+                    "EndBalance": "EndBalance",
+                })
+            except Exception as exc:
+                raise RuntimeError(f"ML cashflow generation failed: {exc}") from exc
 
         if future_cfs is None:
             future_cfs = model.generate_cashflows(
@@ -278,9 +339,29 @@ def run_simulation(
             )
         for _, row in future_cfs.iterrows():
             period = int(row['Period']) + state.period_index
-            state.deposit_funds("IAF", row['InterestCollected'])
-            state.deposit_funds("PAF", row['PrincipalCollected'])
-            state.set_variable("RealizedLoss", row['RealizedLoss'])
+            interest_collected = float(row["InterestCollected"] or 0.0)
+            principal_collected = float(row["PrincipalCollected"] or 0.0)
+            realized_loss = float(row["RealizedLoss"] or 0.0)
+            end_balance = float(row["EndBalance"] or 0.0)
+            prepayment = float(row.get("Prepayment", 0.0) or 0.0)
+            scheduled_principal = float(row.get("ScheduledPrincipal", 0.0) or 0.0)
+            scheduled_interest = float(row.get("ScheduledInterest", 0.0) or 0.0)
+            servicer_advances = float(row.get("ServicerAdvances", 0.0) or 0.0)
+            recoveries = float(row.get("Recoveries", 0.0) or 0.0)
+            state.deposit_funds("IAF", interest_collected)
+            state.deposit_funds("PAF", principal_collected)
+            state.set_variable("RealizedLoss", realized_loss)
+            state.set_variable("InputInterestCollected", interest_collected)
+            state.set_variable("InputPrincipalCollected", principal_collected)
+            state.set_variable("InputRealizedLoss", realized_loss)
+            state.set_variable("InputEndBalance", end_balance)
+            state.set_variable("InputPrepayment", prepayment)
+            state.set_variable("InputScheduledPrincipal", scheduled_principal)
+            state.set_variable("InputScheduledInterest", scheduled_interest)
+            state.set_variable("InputServicerAdvances", servicer_advances)
+            state.set_variable("InputRecoveries", recoveries)
+            state.set_variable("ModelSource", "ML" if ml_used else "RuleBased")
+            state.set_variable("MLUsed", ml_used)
             if "DelinqTrigger" in state.def_.variables:
                 state.def_.variables['DelinqTrigger'] = "False"
             runner.run_period(state)
