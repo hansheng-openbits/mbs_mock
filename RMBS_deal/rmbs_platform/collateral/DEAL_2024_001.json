@@ -1,0 +1,12 @@
+{
+  "deal_id": "DEAL_2024_001",
+  "data": {
+    "original_balance": 100000000.0,
+    "current_balance": 98500000.0,
+    "wac": 0.055,
+    "wam": 348,
+    "pool_type": "FIXED_RATE",
+    "cutoff_date": "2024-01-01",
+    "as_of_date": "2024-03-31"
+  }
+}

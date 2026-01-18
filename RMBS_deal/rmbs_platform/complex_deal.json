@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "deal_id": "REALWORLD_MASTER_V1",
+    "deal_name": "Complex Scenario Test 2024-1",
+    "asset_type": "NON_AGENCY_RMBS",
+    "version": "1.2"
+  },
+  "dates": {
+    "cutoff_date": "2024-01-01",
+    "closing_date": "2024-01-30",
+    "first_payment_date": "2024-02-25",
+    "maturity_date": "2054-01-01",
+    "payment_frequency": "MONTHLY",
+    "day_count": "30_360"
+  },
+  "collateral": {
+    "original_balance": 100000000.0,
+    "loan_data": {},
+    "model_interface": {"kind": "LOAN_LEVEL_SIM", "inputs_required": ["CPR", "CDR"]}
+  },
+  "funds": [
+    {"id": "IAF", "description": "Interest Available Funds"},
+    {"id": "PAF", "description": "Principal Available Funds"}
+  ],
+  "accounts": [
+    {
+      "id": "RESERVE", 
+      "type": "RESERVE", 
+      "target_rule": "1000000.0" 
+    }
+  ],
+  "variables": {
+    "ServicingFeeRate": "0.0050 / 12",
+    "SeniorFeeAmount": "collateral.original_balance * ServicingFeeRate",
+    
+    "ClassA_IntDue": "bonds.ClassA.balance * (0.04 / 12)",
+    "ClassB_IntDue": "bonds.ClassB.balance * (0.08 / 12)",
+    
+    "ReserveDeficit": "MAX(0, 1000000.0 - funds.RESERVE)",
+    "DelinqTrigger": "tests.DelinqTest.failed"
+  },
+  "tests": [
+    {
+      "id": "DelinqTest", 
+      "kind": "DELINQ",
+      "calc": { "value_rule": "0.0" }, 
+      "threshold": { "rule": "0.05" },
+      "pass_if": "VALUE_LT_THRESHOLD",
+      "effects": [{"set_flag": "TriggerActive"}]
+    }
+  ],
+  "bonds": [
+    {
+      "id": "ClassA", "type": "NOTE", "original_balance": 90000000.0,
+      "priority": {"interest": 1, "principal": 1},
+      "coupon": {"kind": "FIXED", "fixed_rate": 0.04}
+    },
+    {
+      "id": "ClassB", "type": "NOTE", "original_balance": 10000000.0,
+      "priority": {"interest": 2, "principal": 2},
+      "coupon": {"kind": "FIXED", "fixed_rate": 0.08}
+    }
+  ],
+  "waterfalls": {
+    "interest": {
+      "steps": [
+        { 
+          "id": "1", "action": "PAY_FEE", "from_fund": "IAF", 
+          "amount_rule": "SeniorFeeAmount",
+          "description": "Scenario 1: Senior Expenses"
+        },
+        { 
+          "id": "2", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", 
+          "group": "ClassA", "amount_rule": "ClassA_IntDue",
+          "unpaid_ledger_id": "ClassA_Shortfall",
+          "description": "Base Case: Senior Interest"
+        },
+        { 
+          "id": "3", "action": "TRANSFER_FUND", "from_fund": "IAF", "to": "RESERVE", 
+          "amount_rule": "MIN(funds.IAF, ReserveDeficit)",
+          "description": "Scenario 2: Reserve Top-Up"
+        },
+        { 
+          "id": "4", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", 
+          "group": "ClassB", "amount_rule": "ClassB_IntDue", 
+          "condition": "DelinqTrigger == False",
+          "unpaid_ledger_id": "ClassB_Shortfall",
+          "description": "Scenario 3: Subordinate Interest (Conditional)"
+        }
+      ]
+    },
+    "principal": {
+      "steps": [
+        { 
+          "id": "1", "action": "PAY_BOND_PRINCIPAL", "from_fund": "PAF", 
+          "group": "ClassA", "amount_rule": "ALL",
+          "description": "Scenario 4: Sequential Pay (A gets everything first)"
+        },
+        { 
+          "id": "2", "action": "PAY_BOND_PRINCIPAL", "from_fund": "PAF", 
+          "group": "ClassB", "amount_rule": "ALL",
+          "description": "Scenario 4: Sequential Pay (B waits)"
+        }
+      ]
+    },
+    "loss_allocation": {
+      "loss_source_rule": "variables.RealizedLoss",
+      "write_down_order": ["ClassB", "ClassA"],
+      "description": "Scenario 5: Reverse Sequential Losses"
+    }
+  }
+}

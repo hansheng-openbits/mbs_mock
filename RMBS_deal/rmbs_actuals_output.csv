@@ -1,0 +1,2 @@
+Period,Date,Bond.ClassA.Balance,Bond.ClassB.Balance,Fund.IAF.Balance,Fund.PAF.Balance,Fund.RESERVE.Balance,Ledger.CumulativeLoss,Ledger.CumulativePrepayment,Var.RealizedLoss,Var.CurrentPoolBalance,Var.ServicingFeeRate,Var.SeniorFeeAmount,Var.ClassA_IntDue,Var.ClassB_IntDue,Var.DelinqTrigger,Bond.ClassA.Prin_Paid,Bond.ClassB.Prin_Paid
+1,2024-02-25,8849000.0,1000000.0,0.0,0.0,0.0,0.0,0.0,50000.0,800000.0,0.00020833333333333335,1875.0000000000002,37500.0,6666.666666666667,True,0.0,0.0

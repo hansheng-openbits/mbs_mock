@@ -1,0 +1,31 @@
+{
+  "original_balance": 115147000.0,
+  "current_balance": 112438000.0,
+  "wac": 0.041708,
+  "wam": 321,
+  "pool_type": "FIXED_RATE",
+  "cutoff_date": "201702",
+  "as_of_date": "201707",
+  "model_interface": {
+    "kind": "LOAN_LEVEL_SIM",
+    "inputs_required": [
+      "loan_tape_csv",
+      "servicer_remits"
+    ]
+  },
+  "ml_config": {
+    "enabled": true,
+    "prepay_model_key": "prepay",
+    "default_model_key": "default",
+    "rate_scenario": "rally",
+    "start_rate": 0.045,
+    "feature_source": "simulated"
+  },
+  "loan_data": {
+    "schema_ref": {
+      "format": "csv",
+      "source_uri": "sample_data_freddie/loan_tape.csv"
+    },
+    "performance_uri": "sample_data_freddie/servicer_{period}.csv"
+  }
+}
