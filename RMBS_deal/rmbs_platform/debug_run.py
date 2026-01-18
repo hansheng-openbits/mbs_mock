@@ -1,10 +1,14 @@
+"""Standalone debug harness for testing rule evaluation."""
+
 import traceback
+from typing import Dict, Any
+
 from engine.loader import DealLoader
 from engine.state import DealState
 from engine.compute import ExpressionEngine
 
 # The JSON causing the issue
-json_spec = {
+json_spec: Dict[str, Any] = {
   "meta": {"deal_id": "DEBUG_TEST", "deal_name": "Debug", "asset_type": "RMBS", "version": "1.0"},
   "dates": {"cutoff_date": "2024-01-01", "closing_date": "2024-01-30", "first_payment_date": "2024-02-25", "maturity_date": "2054-01-01", "payment_frequency": "MONTHLY", "day_count": "30_360"},
   "collateral": {"original_balance": 1000.0, "loan_data": {}, "model_interface": {"kind": "LOAN_LEVEL_SIM", "inputs_required": []}},

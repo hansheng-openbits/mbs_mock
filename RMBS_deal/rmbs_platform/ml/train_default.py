@@ -21,6 +21,7 @@ FEATURES = [
 
 
 def build_default_dataset(data_file: str, output_file: str) -> pd.DataFrame:
+    """Prepare a default modeling dataset with engineered features."""
     df = pd.read_csv(data_file, low_memory=False)
     df = add_default_features(df)
     df["IS_DEFAULT"] = df["EVENT"].apply(lambda x: 1 if x == 2 else 0)
@@ -30,6 +31,7 @@ def build_default_dataset(data_file: str, output_file: str) -> pd.DataFrame:
 
 
 def train_default_model(data_file: str, output_dir: str) -> object:
+    """Train a Cox default model and persist it to disk."""
     from lifelines import CoxPHFitter
     import joblib
 

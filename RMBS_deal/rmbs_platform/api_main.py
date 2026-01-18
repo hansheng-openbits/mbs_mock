@@ -1,4 +1,6 @@
 # api_main.py
+"""FastAPI service for uploading deals, running simulations, and viewing results."""
+
 import sys
 from pathlib import Path
 
@@ -38,19 +40,24 @@ PERFORMANCE_DIR = Path(__file__).resolve().parent / "performance"
 PERFORMANCE_DIR.mkdir(parents=True, exist_ok=True)
 
 def _safe_deal_id(deal_id: str) -> str:
+    """Normalize a deal ID for filesystem-safe storage."""
     safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", deal_id or "").strip("_")
     return safe or "deal"
 
 def _deal_file_path(deal_id: str) -> Path:
+    """Return the path where a deal spec is persisted."""
     return DEALS_DIR / f"{_safe_deal_id(deal_id)}.json"
 
 def _collateral_file_path(deal_id: str) -> Path:
+    """Return the path where collateral data is persisted."""
     return COLLATERAL_DIR / f"{_safe_deal_id(deal_id)}.json"
 
 def _performance_file_path(deal_id: str) -> Path:
+    """Return the path where performance data is persisted."""
     return PERFORMANCE_DIR / f"{_safe_deal_id(deal_id)}.csv"
 
 def _load_persisted_deals() -> None:
+    """Load persisted deals into the in-memory store on startup."""
     for path in DEALS_DIR.glob("*.json"):
         try:
             with path.open("r", encoding="utf-8") as f:
@@ -61,6 +68,7 @@ def _load_persisted_deals() -> None:
             continue
 
 def _load_persisted_collateral() -> None:
+    """Load persisted collateral into the in-memory store on startup."""
     for path in COLLATERAL_DIR.glob("*.json"):
         try:
             with path.open("r", encoding="utf-8") as f:
@@ -71,6 +79,7 @@ def _load_persisted_collateral() -> None:
             continue
 
 def _load_persisted_performance() -> None:
+    """Load persisted performance data into the in-memory store on startup."""
     for path in PERFORMANCE_DIR.glob("*.csv"):
         try:
             df = pd.read_csv(path)
@@ -84,6 +93,7 @@ _load_persisted_collateral()
 _load_persisted_performance()
 
 def _sanitize_json(value: Any) -> Any:
+    """Replace non-finite values to keep API output JSON-safe."""
     if isinstance(value, float):
         return value if math.isfinite(value) else None
     if isinstance(value, dict):
@@ -93,6 +103,7 @@ def _sanitize_json(value: Any) -> Any:
     return value
 
 def _load_model_registry() -> Dict[str, Any]:
+    """Load the ML model registry definition."""
     registry_path = Path(__file__).resolve().parent / "models" / "model_registry.json"
     if not registry_path.exists():
         return {}
@@ -102,6 +113,7 @@ def _load_model_registry() -> Dict[str, Any]:
         return {}
 
 def _normalize_perf_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize performance tape column names."""
     if "BondID" in df.columns and "BondId" not in df.columns:
         df = df.rename(columns={"BondID": "BondId"})
     if "LoanID" in df.columns and "LoanId" not in df.columns:
@@ -109,6 +121,7 @@ def _normalize_perf_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def _aggregate_performance(performance_rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Aggregate loan-level or pool-level performance into period totals."""
     if not performance_rows:
         return []
     df = pd.DataFrame(performance_rows)
@@ -150,6 +163,7 @@ def _aggregate_performance(performance_rows: List[Dict[str, Any]]) -> List[Dict[
     return agg.to_dict(orient="records")
 
 def _latest_actual_period(actuals_data: List[Dict[str, Any]]) -> Optional[int]:
+    """Return the most recent period number from actuals data."""
     if not actuals_data:
         return None
     periods = [row.get("Period") for row in actuals_data if row.get("Period") is not None]
@@ -162,14 +176,17 @@ def _latest_actual_period(actuals_data: List[Dict[str, Any]]) -> Optional[int]:
 
 # --- DATA MODELS ---
 class DealUpload(BaseModel):
+    """Payload for uploading a deal structure."""
     deal_id: str
     spec: Dict[str, Any]
 
 class CollateralUpload(BaseModel):
+    """Payload for uploading initial collateral attributes."""
     deal_id: str
     collateral: Dict[str, Any]
 
 class SimRequest(BaseModel):
+    """Simulation request with modeling assumptions and ML overrides."""
     deal_id: str
     cpr: float = 0.10
     cdr: float = 0.01
@@ -186,7 +203,7 @@ class SimRequest(BaseModel):
 # --- ENDPOINTS ---
 
 @app.post("/deals", tags=["Arranger"])
-async def upload_deal(deal: DealUpload):
+async def upload_deal(deal: DealUpload) -> Dict[str, Any]:
     """Arranger uploads a new deal structure."""
     if "meta" not in deal.spec:
         deal.spec["meta"] = {}
@@ -199,7 +216,7 @@ async def upload_deal(deal: DealUpload):
     return {"message": f"Deal {deal.deal_id} stored successfully."}
 
 @app.post("/collateral", tags=["Arranger"])
-async def upload_collateral(payload: CollateralUpload):
+async def upload_collateral(payload: CollateralUpload) -> Dict[str, Any]:
     """Arranger uploads initial collateral attributes."""
     COLLATERAL_DB[payload.deal_id] = payload.collateral
     path = _collateral_file_path(payload.deal_id)
@@ -208,14 +225,14 @@ async def upload_collateral(payload: CollateralUpload):
     return {"message": f"Collateral for {payload.deal_id} stored successfully."}
 
 @app.get("/collateral/{deal_id}", tags=["Arranger", "Investor"])
-async def get_collateral(deal_id: str):
+async def get_collateral(deal_id: str) -> Dict[str, Any]:
     collateral = COLLATERAL_DB.get(deal_id)
     if collateral is None:
         raise HTTPException(404, "Collateral not found")
     return {"deal_id": deal_id, "collateral": collateral}
 
 @app.post("/performance/{deal_id}", tags=["Servicer"])
-async def upload_performance(deal_id: str, file: UploadFile = File(...)):
+async def upload_performance(deal_id: str, file: UploadFile = File(...)) -> Dict[str, Any]:
     """Servicer uploads monthly performance tape as CSV."""
     try:
         content = await file.read()
@@ -249,7 +266,7 @@ async def upload_performance(deal_id: str, file: UploadFile = File(...)):
             "latest_period": latest_period}
 
 @app.delete("/performance/{deal_id}", tags=["Servicer"])
-async def clear_performance(deal_id: str):
+async def clear_performance(deal_id: str) -> Dict[str, Any]:
     """Clear all stored performance rows for a deal."""
     PERFORMANCE_DB.pop(deal_id, None)
     path = _performance_file_path(deal_id)
@@ -261,7 +278,7 @@ async def clear_performance(deal_id: str):
     return {"message": f"Performance for {deal_id} cleared."}
 
 @app.get("/deals", tags=["Arranger", "Investor"])
-async def list_deals():
+async def list_deals() -> Dict[str, Any]:
     """List all available deals."""
     deals: List[Dict[str, str]] = []
     for deal_id, spec in DEALS_DB.items():
@@ -283,7 +300,7 @@ async def list_deals():
     return {"deals": deals}
 
 @app.post("/simulate", tags=["Investor"])
-async def start_simulation(req: SimRequest, background_tasks: BackgroundTasks):
+async def start_simulation(req: SimRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """Investor requests a simulation run (Async)."""
     if req.deal_id not in DEALS_DB:
         raise HTTPException(404, "Deal ID not found")
@@ -330,7 +347,7 @@ async def start_simulation(req: SimRequest, background_tasks: BackgroundTasks):
     return {"job_id": job_id, "status": "QUEUED"}
 
 @app.get("/results/{job_id}", tags=["Reporting"])
-async def get_results(job_id: str):
+async def get_results(job_id: str) -> Dict[str, Any]:
     """Retrieve simulation results."""
     job = JOBS_DB.get(job_id)
     if not job:
@@ -354,26 +371,30 @@ async def get_results(job_id: str):
     return {"status": job['status']}
 
 # --- WORKER ---
-def worker(job_id, deal_id, cpr, cdr, sev):
+def worker(job_id: str, deal_id: str, cpr: float, cdr: float, sev: float) -> None:
     try:
         deal_json = DEALS_DB[deal_id]
         collateral_json = COLLATERAL_DB.get(deal_id, deal_json.get("collateral", {}))
         performance_rows = PERFORMANCE_DB.get(deal_id, [])
         ml_overrides = JOBS_DB.get(job_id, {}).get("ml_overrides", {})
-        if ml_overrides:
-            collateral_json = dict(collateral_json)
-            ml_config = dict(collateral_json.get("ml_config") or {})
+        ml_requested = bool(ml_overrides.get("enabled"))
+        collateral_json = dict(collateral_json)
+        ml_config = dict(collateral_json.get("ml_config") or {})
+        if ml_requested:
             ml_config.update(ml_overrides)
-            collateral_json["ml_config"] = ml_config
+        else:
+            ml_config["enabled"] = False
+        collateral_json["ml_config"] = ml_config
 
         registry = _load_model_registry()
         model_info = {}
-        if ml_overrides.get("enabled"):
+        if ml_requested:
             prepay_key = ml_overrides.get("prepay_model_key") or (collateral_json.get("ml_config") or {}).get("prepay_model_key")
             default_key = ml_overrides.get("default_model_key") or (collateral_json.get("ml_config") or {}).get("default_model_key")
             prepay_path = registry.get(prepay_key, {}).get("path") if prepay_key else None
             default_path = registry.get(default_key, {}).get("path") if default_key else None
             model_info = {
+                "ml_requested": True,
                 "prepay_key": prepay_key,
                 "default_key": default_key,
                 "prepay_path": prepay_path,
@@ -383,6 +404,8 @@ def worker(job_id, deal_id, cpr, cdr, sev):
                 "feature_source": ml_overrides.get("feature_source") or (collateral_json.get("ml_config") or {}).get("feature_source"),
                 "origination_source_uri": ml_overrides.get("origination_source_uri") or (collateral_json.get("ml_config") or {}).get("origination_source_uri"),
             }
+        else:
+            model_info = {"ml_requested": False}
         df, reconciliation = run_simulation(deal_json, collateral_json, performance_rows, cpr, cdr, sev)
         if model_info:
             model_info["ml_used"] = False
@@ -517,5 +540,5 @@ def worker(job_id, deal_id, cpr, cdr, sev):
 
 
 @app.get("/models/registry", tags=["Models"])
-async def get_model_registry():
+async def get_model_registry() -> Dict[str, Any]:
     return {"registry": _load_model_registry()}

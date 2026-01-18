@@ -1,17 +1,26 @@
+"""Expression evaluation for RMBS waterfall rules and triggers."""
+
 import logging
 import math
 from typing import Any, Dict
-# Note: Import paths might vary based on your folder structure. 
+# Note: Import paths might vary based on your folder structure.
 # If running as a package, use: from .state import DealState, BondState
 from .state import DealState, BondState
 
 logger = logging.getLogger("RMBS.Compute")
 
 class EvaluationError(Exception):
-    pass
+    """Raised when a waterfall or test expression cannot be evaluated."""
+
 
 class ExpressionEngine:
-    def __init__(self):
+    """Evaluates deal formulas against the current deal state.
+
+    The engine builds a business-oriented namespace (funds, bonds, tests, ledgers)
+    and executes deal rules that determine triggers, payments, and flags.
+    """
+
+    def __init__(self) -> None:
         self.safe_globals = {
             "__builtins__": None,
             "MIN": min,
@@ -24,6 +33,15 @@ class ExpressionEngine:
         }
 
     def evaluate(self, expression: str, state: DealState) -> Any:
+        """Evaluate a rule expression in the context of a deal state.
+
+        Parameters
+        ----------
+        expression
+            Rule string from the deal definition.
+        state
+            Current deal state (balances, variables, flags).
+        """
         if expression is None or expression == "":
             return 0.0
 
@@ -41,15 +59,14 @@ class ExpressionEngine:
             raise EvaluationError(f"Calculation error: {e}")
 
     def evaluate_condition(self, rule: str, state: DealState) -> bool:
+        """Evaluate a boolean condition used in waterfall step gating."""
         if str(rule).lower() == "true": return True
         if str(rule).lower() == "false": return False
         result = self.evaluate(rule, state)
         return bool(result)
 
     def _build_execution_context(self, state: DealState) -> Dict[str, Any]:
-        """
-        Constructs the variable namespace, including the 'tests' proxy.
-        """
+        """Construct the evaluation namespace for deal rules and tests."""
         ctx = {}
 
         # 1. Fund Proxy

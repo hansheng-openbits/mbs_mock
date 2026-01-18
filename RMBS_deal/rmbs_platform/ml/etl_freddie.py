@@ -11,6 +11,7 @@ from .config import TIME_COLS
 
 
 def _get_event_status(group: pd.DataFrame) -> Tuple[int, int]:
+    """Derive event type and duration for a single loan's performance history."""
     group = group.sort_values("LOAN_AGE")
     last_row = group.iloc[-1]
 
@@ -42,6 +43,7 @@ def build_survival_dataset(
     perf_file: str,
     output_file: str,
 ) -> pd.DataFrame:
+    """Create a survival dataset from Freddie Mac origination/performance tapes."""
     orig_path = Path(orig_file)
     perf_path = Path(perf_file)
 
@@ -60,6 +62,7 @@ def build_survival_dataset(
 
 
 def _cli() -> None:
+    """CLI entry point for ETL processing."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Build survival dataset from Freddie Mac tapes.")

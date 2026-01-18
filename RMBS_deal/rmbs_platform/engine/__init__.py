@@ -1,8 +1,11 @@
-# engine/__init__.py
+"""Core simulation entry points for the RMBS engine."""
+
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 from datetime import date, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from .loader import DealLoader
 from .state import DealState
 from .compute import ExpressionEngine
@@ -11,6 +14,7 @@ from .reporting import ReportGenerator
 from .collateral import CollateralModel
 
 def _prepare_performance(performance_rows: List[Dict[str, Any]]) -> pd.DataFrame:
+    """Normalize a performance tape into a DataFrame with standard columns."""
     if not performance_rows:
         return pd.DataFrame()
     df = pd.DataFrame(performance_rows)
@@ -22,6 +26,7 @@ def _prepare_performance(performance_rows: List[Dict[str, Any]]) -> pd.DataFrame
 
 
 def _aggregate_loan_performance(loan_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate loan-level performance rows into pool-level totals."""
     if loan_df.empty:
         return pd.DataFrame()
 
@@ -37,11 +42,13 @@ def _aggregate_loan_performance(loan_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _aggregate_collateral(collateral_json: Dict[str, Any]) -> Dict[str, Any]:
+    """Derive pool-level collateral stats from loan-level attributes."""
     loans = collateral_json.get("loans")
     if not loans:
         return collateral_json
 
     def _get_num(entry: Dict[str, Any], keys: List[str]) -> Optional[float]:
+        """Return the first numeric field found in a loan record."""
         for key in keys:
             if key in entry and entry[key] is not None:
                 try:
@@ -84,8 +91,8 @@ def _aggregate_collateral(collateral_json: Dict[str, Any]) -> Dict[str, Any]:
     return collateral_json
 
 def run_simulation(
-    deal_json: dict,
-    collateral_json: dict,
+    deal_json: Dict[str, Any],
+    collateral_json: Dict[str, Any],
     performance_rows: List[Dict[str, Any]],
     cpr: float,
     cdr: float,
@@ -93,10 +100,8 @@ def run_simulation(
     horizon_periods: int = 60,
     strict_balance_check: bool = True,
     apply_waterfall_to_actuals: bool = True
-) -> tuple[pd.DataFrame, List[Dict[str, Any]]]:
-    """
-    Wrapper function to execute a full simulation from JSON input.
-    """
+) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
+    """Run a full deal simulation and return the detailed cashflow report."""
     # 1. Load Deal
     loader = DealLoader()
     merged_deal = dict(deal_json)
@@ -311,6 +316,8 @@ def run_simulation(
                 rate_scenario = ml_config.get("rate_scenario", "rally")
                 start_rate = ml_config.get("start_rate", 0.045)
                 rate_sensitivity = ml_config.get("rate_sensitivity", 1.0)
+                base_cpr = ml_config.get("base_cpr", cpr)
+                base_cdr = ml_config.get("base_cdr", cdr)
                 vasicek = StochasticRateModel()
                 rates = vasicek.generate_paths(n_months=remaining, start_rate=start_rate, shock_scenario=rate_scenario)
                 state.set_variable("MLRateScenario", rate_scenario)
@@ -318,7 +325,17 @@ def run_simulation(
                 state.set_variable("MLRateFirst", float(rates[0]) if len(rates) > 0 else None)
                 state.set_variable("MLRateMean", float(np.mean(rates)) if len(rates) > 0 else None)
                 state.set_variable("MLRateSensitivity", float(rate_sensitivity))
-                surv = SurveillanceEngine(pool, prepay_model, default_model, feature_source=feature_source, rate_sensitivity=rate_sensitivity)
+                state.set_variable("MLBaseCPR", float(base_cpr))
+                state.set_variable("MLBaseCDR", float(base_cdr))
+                surv = SurveillanceEngine(
+                    pool,
+                    prepay_model,
+                    default_model,
+                    feature_source=feature_source,
+                    rate_sensitivity=rate_sensitivity,
+                    base_cpr=base_cpr,
+                    base_cdr=base_cdr,
+                )
                 future_cfs = surv.run(rates)
                 if future_cfs.empty:
                     raise ValueError("ML cashflow generation returned no rows.")

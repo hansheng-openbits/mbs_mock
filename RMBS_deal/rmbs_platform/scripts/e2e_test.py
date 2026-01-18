@@ -23,6 +23,7 @@ def _ok(msg: str) -> None:
 
 
 def _post_json(url: str, payload: dict) -> dict:
+    """POST JSON payload and return JSON response."""
     res = requests.post(url, json=payload, timeout=30)
     if res.status_code != 200:
         _fail(f"POST {url} failed: {res.status_code} {res.text}")
@@ -30,6 +31,7 @@ def _post_json(url: str, payload: dict) -> dict:
 
 
 def _delete(url: str) -> dict:
+    """DELETE an API resource and return JSON response."""
     res = requests.delete(url, timeout=30)
     if res.status_code != 200:
         _fail(f"DELETE {url} failed: {res.status_code} {res.text}")
@@ -37,6 +39,7 @@ def _delete(url: str) -> dict:
 
 
 def _post_file(url: str, file_path: Path) -> dict:
+    """Upload a file to an API endpoint."""
     with file_path.open("rb") as f:
         res = requests.post(url, files={"file": (file_path.name, f.read())}, timeout=60)
     if res.status_code != 200:
@@ -98,6 +101,7 @@ def main() -> None:
             Path("/media/hansheng/cc7df9bc-e728-4b8d-a215-b64f31876acc/cdo-tee-mock/prepayment/data/Extracted_data/combined_sampled_mortgages_2017_2020.csv")
         )
 
+    feature_source = "simulated" if args.use_ml else None
     payload = {
         "deal_id": args.deal_id,
         "cpr": 0.10,
@@ -108,7 +112,7 @@ def main() -> None:
         "default_model_key": args.default_model_key if args.use_ml else None,
         "rate_scenario": args.rate_scenario if args.use_ml else None,
         "start_rate": args.start_rate if args.use_ml else None,
-        "feature_source": args.feature_source if args.use_ml else None,
+        "feature_source": feature_source,
         "origination_source_uri": orig_source if args.use_ml and orig_source else None,
     }
 

@@ -1,3 +1,5 @@
+"""Reporting utilities that convert engine history into analyst-friendly tables."""
+
 import pandas as pd
 import logging
 from typing import List, Dict, Any
@@ -7,14 +9,13 @@ from .state import Snapshot
 logger = logging.getLogger("RMBS.Reporting")
 
 class ReportGenerator:
-    def __init__(self, history: List[Snapshot]):
+    """Builds tabular cashflow reports from deal snapshots."""
+
+    def __init__(self, history: List[Snapshot]) -> None:
         self.history = history
 
     def generate_cashflow_report(self) -> pd.DataFrame:
-        """
-        Converts the list of Snapshots into a Pandas DataFrame.
-        Columns will include: Period, Date, Bond Balances, Fund Balances, Ledgers.
-        """
+        """Convert snapshots into a period-by-period cashflow report."""
         if not self.history:
             logger.warning("No history found. Returning empty DataFrame.")
             return pd.DataFrame()
@@ -72,7 +73,8 @@ class ReportGenerator:
         
         return df
 
-    def save_to_csv(self, df: pd.DataFrame, filename: str):
+    def save_to_csv(self, df: pd.DataFrame, filename: str) -> None:
+        """Persist a cashflow report to disk."""
         try:
             df.to_csv(filename, index=False)
             logger.info(f"Report saved to {filename}")

@@ -14,7 +14,9 @@ from .features import add_default_features, add_prepay_features
 
 
 class DataManager:
-    def __init__(self, static_file: str, perf_file: Optional[str] = None, feature_source: str = "simulated"):
+    """Loads and normalizes loan tapes for portfolio-level ML simulation."""
+
+    def __init__(self, static_file: str, perf_file: Optional[str] = None, feature_source: str = "simulated") -> None:
         self.static_file = static_file
         self.perf_file = perf_file
         self.feature_source = feature_source
@@ -23,6 +25,7 @@ class DataManager:
 
     @staticmethod
     def _read_static(path: Path) -> pd.DataFrame:
+        """Read a Freddie or normalized origination tape from disk."""
         df = pd.read_csv(path, sep="|", low_memory=False)
         if len(df.columns) == 1 and "," in df.columns[0]:
             df = pd.read_csv(path, sep=",", low_memory=False)
@@ -32,6 +35,7 @@ class DataManager:
 
     @staticmethod
     def _normalize_static(df: pd.DataFrame) -> pd.DataFrame:
+        """Normalize origination columns into the model's feature schema."""
         if "LoanId" in df.columns:
             df = df.rename(
                 columns={
@@ -79,7 +83,8 @@ class DataManager:
 
         return df
 
-    def _load(self):
+    def _load(self) -> None:
+        """Load tapes and populate normalized loan pool."""
         if not Path(self.static_file).exists():
             raise FileNotFoundError(f"Origination tape not found: {self.static_file}")
 
@@ -123,10 +128,12 @@ class DataManager:
         self.raw_df = df
 
     def _generate_mock(self, n: int) -> pd.DataFrame:
+        """Create a synthetic pool (used only for diagnostics)."""
         return pd.DataFrame({"ORIG_UPB": [300000] * n, "CURRENT_UPB": [300000] * n})
 
     @staticmethod
     def _load_perf_balance(path: Path) -> Optional[pd.DataFrame]:
+        """Load current UPB from a performance tape if available."""
         # Freddie performance format (pipe-delimited)
         try:
             df_perf = pd.read_csv(
@@ -171,10 +178,12 @@ class DataManager:
         return latest
 
     def get_pool(self) -> pd.DataFrame:
+        """Return the normalized loan pool with positive balances."""
         return self.raw_df[self.raw_df["CURRENT_UPB"] > 0].copy()
 
 
 class SurveillanceEngine:
+    """Run a portfolio projection using ML prepay/default models."""
     def __init__(
         self,
         pool: pd.DataFrame,
@@ -182,14 +191,19 @@ class SurveillanceEngine:
         default_model: UniversalModel,
         feature_source: str = "simulated",
         rate_sensitivity: float = 1.0,
-    ):
+        base_cpr: float = 0.06,
+        base_cdr: float = 0.005,
+    ) -> None:
         self.pool = pool.copy()
         self.prepay = prepay_model
         self.default = default_model
         self.feature_source = feature_source
         self.rate_sensitivity = rate_sensitivity
+        self.base_cpr = base_cpr
+        self.base_cdr = base_cdr
 
     def run(self, rate_path: np.ndarray) -> pd.DataFrame:
+        """Generate portfolio-level cashflows for a given rate path."""
         loans = self.pool.copy()
         if "NOTE_RATE" not in loans.columns:
             loans["NOTE_RATE"] = 0.0
@@ -208,9 +222,6 @@ class SurveillanceEngine:
         loans["Active_Bal"] = loans["CURRENT_UPB"]
         history = []
 
-        base_cpr = 0.06
-        base_cdr = 0.005
-
         if len(rate_path.shape) > 1:
             rate_path = rate_path.flatten()
 
@@ -225,8 +236,8 @@ class SurveillanceEngine:
             cpr_mult = np.clip(self.prepay.predict_multiplier(loans), 0.1, 20.0)
             cdr_mult = np.clip(self.default.predict_multiplier(loans), 0.1, 10.0)
 
-            cpr = np.clip(base_cpr * cpr_mult, 0.0, 1.0)
-            cdr = np.clip(base_cdr * cdr_mult, 0.0, 1.0)
+            cpr = np.clip(self.base_cpr * cpr_mult, 0.0, 1.0)
+            cdr = np.clip(self.base_cdr * cdr_mult, 0.0, 1.0)
 
             if self.feature_source == "simulated":
                 rate_adj = 1.0 + (loans["RATE_INCENTIVE"] / 100.0) * float(self.rate_sensitivity)
@@ -274,6 +285,7 @@ class SurveillanceEngine:
 
 @dataclass
 class Tranche:
+    """Simple tranche container used by the demo waterfall."""
     name: str
     balance: float
     coupon: float
@@ -282,10 +294,12 @@ class Tranche:
 
     @classmethod
     def create(cls, name: str, balance: float, coupon: float) -> "Tranche":
+        """Construct a tranche with original balance set to current balance."""
         return cls(name=name, balance=balance, coupon=coupon, orig=balance, cfs=[])
 
 
 def run_waterfall(tranches: List[Tranche], cfs: pd.DataFrame) -> List[Tranche]:
+    """Apply a simple interest/principal waterfall to tranche cashflows."""
     equity = tranches[-1]
     for row in cfs.itertuples():
         avail_int = row.Interest

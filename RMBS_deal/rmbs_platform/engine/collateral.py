@@ -1,9 +1,13 @@
+"""Collateral cashflow generation for rule-based simulations."""
+
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
+from typing import Optional
 
 @dataclass
 class PeriodCashflow:
+    """Single-period collateral cashflow summary."""
     period: int
     scheduled_interest: float
     scheduled_principal: float
@@ -14,20 +18,24 @@ class PeriodCashflow:
     total_principal_collected: float
 
 class CollateralModel:
-    def __init__(self, original_balance: float, wac: float, wam: int):
+    """Generates simplified collateral cashflows from CPR/CDR assumptions."""
+
+    def __init__(self, original_balance: float, wac: float, wam: int) -> None:
         self.original_balance = original_balance
         self.wac = wac
         self.wam = wam
         self.current_balance = original_balance
         self.current_period = 0
 
-    def generate_cashflows(self, periods: int, cpr_vector: float, cdr_vector: float, sev_vector: float, start_balance: float = None) -> pd.DataFrame:
-        """
-        Generates a DataFrame of asset cashflows for N periods based on assumptions.
-        CPR: Constant Prepayment Rate (Annualized)
-        CDR: Constant Default Rate (Annualized)
-        SEV: Severity (Loss Given Default)
-        """
+    def generate_cashflows(
+        self,
+        periods: int,
+        cpr_vector: float,
+        cdr_vector: float,
+        sev_vector: float,
+        start_balance: Optional[float] = None,
+    ) -> pd.DataFrame:
+        """Return collateral cashflows given CPR/CDR/SEV assumptions."""
         rows = []
         balance = self.original_balance if start_balance is None else start_balance
         

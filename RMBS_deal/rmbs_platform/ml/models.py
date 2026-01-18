@@ -1,21 +1,29 @@
-"""Model wrappers and rate simulation."""
+"""Model wrappers and rate simulation for ML-based RMBS projections."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 import numpy as np
 
 
 @dataclass
 class StochasticRateModel:
+    """Simple Vasicek-style short-rate generator for scenario analysis."""
     kappa: float = 0.15
     theta: float = 0.045
     sigma: float = 0.012
     dt: float = 1 / 12
 
-    def generate_paths(self, n_months: int, n_sims: int = 1, start_rate: float = 0.045, shock_scenario: Optional[str] = None) -> np.ndarray:
+    def generate_paths(
+        self,
+        n_months: int,
+        n_sims: int = 1,
+        start_rate: float = 0.045,
+        shock_scenario: Optional[str] = None,
+    ) -> np.ndarray:
+        """Generate simulated short-rate paths for a given scenario."""
         np.random.seed(42)
         rates = np.zeros((n_months, n_sims))
         rates[0, :] = start_rate
@@ -36,7 +44,9 @@ class StochasticRateModel:
 
 
 class UniversalModel:
-    def __init__(self, model_path: str, model_type: str):
+    """Loads a prepay/default model or falls back to heuristic weights."""
+
+    def __init__(self, model_path: str, model_type: str) -> None:
         self.path = model_path
         self.type = model_type
         self.model = None
@@ -61,7 +71,8 @@ class UniversalModel:
 
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
+        """Attempt to load a serialized model; otherwise use fallback weights."""
         try:
             import joblib
 
@@ -70,7 +81,8 @@ class UniversalModel:
         except Exception:
             self.strategy = "Hardcoded"
 
-    def predict_multiplier(self, df):
+    def predict_multiplier(self, df: Any) -> np.ndarray:
+        """Return a hazard multiplier given a feature frame."""
         if self.strategy == "Pickle" and self.model is not None:
             try:
                 return self.model.predict_partial_hazard(df)

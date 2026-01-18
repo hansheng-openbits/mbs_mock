@@ -20,7 +20,13 @@ FEATURES = [
 ]
 
 
-def train_prepay_models(data_file: str, output_dir: str, test_size: float = 0.25, seed: int = 42) -> Tuple[object, object]:
+def train_prepay_models(
+    data_file: str,
+    output_dir: str,
+    test_size: float = 0.25,
+    seed: int = 42,
+) -> Tuple[object, object]:
+    """Train Cox and RSF prepayment models from a survival dataset."""
     from lifelines import CoxPHFitter
     from lifelines.utils import concordance_index
     from sklearn.model_selection import train_test_split

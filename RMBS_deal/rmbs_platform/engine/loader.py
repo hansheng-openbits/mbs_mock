@@ -1,3 +1,5 @@
+"""Deal definition loader and validator for RMBS structures."""
+
 import json
 import logging
 from dataclasses import dataclass, field
@@ -14,24 +16,23 @@ logger = logging.getLogger("RMBS.Loader")
 # --- CUSTOM EXCEPTIONS ---
 class DealLoadError(Exception):
     """Base exception for deal loading issues."""
-    pass
 
 class SchemaViolationError(DealLoadError):
     """Raised when the JSON structure is invalid."""
-    pass
 
 class LogicIntegrityError(DealLoadError):
     """Raised when logic references (IDs) are broken."""
-    pass
 
 # --- ENUMS (Type Safety) ---
 class DayCount(str, Enum):
+    """Supported day count conventions for interest accrual."""
     DC_30_360 = "30_360"
     ACT_360 = "ACT_360"
     ACT_365 = "ACT_365"
     ACT_ACT = "ACT_ACT"
 
 class CouponType(str, Enum):
+    """Coupon types supported by the engine."""
     FIXED = "FIXED"
     FLOAT = "FLOAT"
     WAC = "WAC"
@@ -40,6 +41,7 @@ class CouponType(str, Enum):
 # --- IMMUTABLE DOMAIN OBJECTS ---
 @dataclass(frozen=True)
 class Bond:
+    """Immutable bond definition from the deal specification."""
     id: str
     type: str
     original_balance: float
@@ -54,19 +56,19 @@ class Bond:
 
 @dataclass(frozen=True)
 class Fund:
+    """Cash fund definition used by the waterfall."""
     id: str
     description: str
 
 @dataclass(frozen=True)
 class Account:
+    """Account definition for reserve or control accounts."""
     id: str
     type: str
 
 @dataclass(frozen=True)
 class DealDefinition:
-    """
-    The immutable, validated definition of the deal.
-    """
+    """Validated, immutable deal definition used by the engine."""
     meta: Dict[str, Any]
     dates: Dict[str, Any]
     bonds: Dict[str, Bond]
@@ -77,19 +79,21 @@ class DealDefinition:
     collateral: Dict[str, Any]
     waterfalls: Dict[str, Any]
     
-    def get_bond(self, bond_id: str) -> Bond:
+    def get_bond(self, bond_id: str) -> Optional[Bond]:
+        """Return a bond definition by ID."""
         return self.bonds.get(bond_id)
 
 # --- THE LOADER MODULE ---
 
 class DealLoader:
-    def __init__(self, schema_path: str = None):
-        """
-        Initialize with a path to the JSON Schema file.
-        """
+    """Loads a deal JSON file, validates it, and hydrates domain objects."""
+
+    def __init__(self, schema_path: Optional[str] = None) -> None:
+        """Initialize with an optional JSON Schema path."""
         self.schema = self._load_schema(schema_path) if schema_path else None
 
-    def _load_schema(self, path: str) -> dict:
+    def _load_schema(self, path: str) -> Dict[str, Any]:
+        """Load a JSON schema from disk."""
         try:
             with open(path, 'r') as f:
                 return json.load(f)
@@ -98,6 +102,7 @@ class DealLoader:
             raise e
 
     def load_from_json(self, json_data: Dict[str, Any]) -> DealDefinition:
+        """Parse and validate a deal JSON structure into a DealDefinition."""
         logger.info(f"Loading deal: {json_data.get('meta', {}).get('deal_id', 'Unknown')}")
 
         # 1. Syntactic Validation
@@ -112,7 +117,8 @@ class DealLoader:
         logger.info("Deal loaded and validated successfully.")
         return deal
 
-    def _validate_syntax(self, data: Dict[str, Any]):
+    def _validate_syntax(self, data: Dict[str, Any]) -> None:
+        """Validate JSON structure against the schema (if provided)."""
         if not self.schema:
             logger.warning("No JSON Schema provided. Skipping syntactic validation.")
             return
@@ -124,6 +130,7 @@ class DealLoader:
             raise SchemaViolationError(f"Invalid JSON Structure: {e.message}")
 
     def _hydrate_objects(self, data: Dict[str, Any]) -> DealDefinition:
+        """Convert raw JSON into typed domain objects."""
         try:
             # Hydrate Funds
             funds = {
@@ -180,7 +187,8 @@ class DealLoader:
             logger.error(f"Missing required field during hydration: {e}")
             raise SchemaViolationError(f"Missing required field: {e}")
 
-    def _validate_semantics(self, deal: DealDefinition, raw_data: Dict[str, Any]):
+    def _validate_semantics(self, deal: DealDefinition, raw_data: Dict[str, Any]) -> None:
+        """Validate cross-references and waterfall logic integrity."""
         errors = []
 
         # Create Sets for O(1) Lookup

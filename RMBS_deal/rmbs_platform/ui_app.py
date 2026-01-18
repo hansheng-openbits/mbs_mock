@@ -1,9 +1,12 @@
-# ui_app.py
-import streamlit as st
-import requests
-from requests.exceptions import RequestException
+"""Streamlit UI for interacting with the RMBS platform API."""
+
 import json
+from typing import Any, Dict, List
+
 import pandas as pd
+import requests
+import streamlit as st
+from requests.exceptions import RequestException
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -12,7 +15,8 @@ st.set_page_config(page_title="RMBS Platform", layout="wide")
 st.title("🏦 Enterprise RMBS Platform")
 
 # --- Helpers ---
-def fetch_deals():
+def fetch_deals() -> List[Dict[str, Any]]:
+    """Retrieve available deals from the API."""
     try:
         res = requests.get(f"{API_URL}/deals", timeout=5)
         if res.status_code == 200:
@@ -21,7 +25,8 @@ def fetch_deals():
         st.warning("API server not reachable. Start FastAPI at 127.0.0.1:8000.")
     return []
 
-def fetch_model_registry():
+def fetch_model_registry() -> Dict[str, Any]:
+    """Retrieve the ML model registry from the API."""
     try:
         res = requests.get(f"{API_URL}/models/registry", timeout=5)
         if res.status_code == 200:
@@ -307,6 +312,8 @@ elif persona == "Investor (Analytics)":
                                 "Var.MLRateFirst",
                                 "Var.MLRateMean",
                                 "Var.MLRateSensitivity",
+                                "Var.MLBaseCPR",
+                                "Var.MLBaseCDR",
                             ]
                             if not sim_df.empty and any(c in sim_df.columns for c in ml_cols):
                                 last_sim = sim_df.iloc[-1]

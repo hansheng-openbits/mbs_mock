@@ -1,23 +1,26 @@
-# In engine/waterfall.py
+"""Waterfall execution engine for RMBS cashflow allocation."""
+
 import logging
+from typing import Any, Dict
+
 from .state import DealState
 from .compute import ExpressionEngine
 
 logger = logging.getLogger("RMBS.Waterfall")
 
 class WaterfallRunner:
-    def __init__(self, engine: ExpressionEngine):
+    """Runs deal tests, variables, and waterfall steps for each period."""
+
+    def __init__(self, engine: ExpressionEngine) -> None:
         self.expr = engine
 
-    def evaluate_period(self, state: DealState):
-        """
-        Evaluate tests and variables without executing waterfalls.
-        Used for historical actuals where cashflows are recorded, not simulated.
-        """
+    def evaluate_period(self, state: DealState) -> None:
+        """Evaluate tests/variables for actual periods without paying cashflows."""
         self._run_tests(state)
         self._calculate_variables(state)
 
-    def run_period(self, state: DealState):
+    def run_period(self, state: DealState) -> None:
+        """Run a full period including tests, variables, waterfalls, and losses."""
         logger.info(f"--- Running Period {state.period_index + 1} ---")
 
         # STEP 1: Run Tests FIRST (So flags are ready for variables)
@@ -35,16 +38,15 @@ class WaterfallRunner:
 
         self._allocate_losses(state)
 
-    def _calculate_variables(self, state: DealState):
+    def _calculate_variables(self, state: DealState) -> None:
+        """Compute derived variables used by waterfall steps and tests."""
         # We iterate safely. In a real engine, we would topological sort to handle dependencies.
         for var_name, rule_str in state.def_.variables.items():
             val = self.expr.evaluate(rule_str, state)
             state.set_variable(var_name, val)
 
-    def _run_tests(self, state: DealState):
-        """
-        Iterates through tests defined in JSON, evaluates them, and sets flags.
-        """
+    def _run_tests(self, state: DealState) -> None:
+        """Evaluate deal tests (e.g., triggers) and set pass/fail flags."""
         for test in state.def_.tests:
             test_id = test['id']
             
@@ -81,7 +83,8 @@ class WaterfallRunner:
 
             # logger.info(f"Test {test_id}: Val={val}, Thresh={thresh}, Passed={passed}")
 
-    def _execute_waterfall(self, state: DealState, waterfall_type: str):
+    def _execute_waterfall(self, state: DealState, waterfall_type: str) -> None:
+        """Execute one waterfall (interest or principal) for the period."""
         wf_def = state.def_.waterfalls.get(waterfall_type, {})
         steps = wf_def.get('steps', [])
 
@@ -124,7 +127,8 @@ class WaterfallRunner:
                 current = state.ledgers.get(step['unpaid_ledger_id'], 0.0)
                 state.set_ledger(step['unpaid_ledger_id'], current + shortfall)
 
-    def _pay_bond(self, state: DealState, step: dict, amount: float, is_prin: bool):
+    def _pay_bond(self, state: DealState, step: Dict[str, Any], amount: float, is_prin: bool) -> None:
+        """Route a payment to interest or principal for a bond group."""
         group = step.get('group')
         source = step.get('from_fund')
         if is_prin:
@@ -132,7 +136,8 @@ class WaterfallRunner:
         else:
             state.withdraw_cash(source, amount)
 
-    def _allocate_losses(self, state: DealState):
+    def _allocate_losses(self, state: DealState) -> None:
+        """Allocate realized losses to bonds based on loss allocation rules."""
         loss = state.get_variable("RealizedLoss") or 0.0
         if loss <= 0: return
         

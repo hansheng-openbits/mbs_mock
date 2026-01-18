@@ -15,6 +15,7 @@ def get_rate_incentive_metrics(
     note_rate: float,
     market_rates: Dict[int, float] | None = None,
 ) -> Tuple[float, float]:
+    """Compute current and cumulative rate incentive for a loan."""
     rates = market_rates or MARKET_RATES
     start_year = first_payment_yyyymm // 100
     start_month = first_payment_yyyymm % 100
@@ -42,6 +43,7 @@ def get_rate_incentive_metrics(
 
 
 def add_prepay_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add prepayment-related features to a loan tape."""
     def apply_metrics(row):
         try:
             current, cumulative = get_rate_incentive_metrics(
@@ -60,6 +62,7 @@ def add_prepay_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_default_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add default-related features to a loan tape."""
     def engineer(row):
         try:
             orig_date = int(row["FIRST_PAYMENT_DATE"])
@@ -89,6 +92,7 @@ def add_default_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def normalize_columns(df: pd.DataFrame, required: Iterable[str]) -> pd.DataFrame:
+    """Ensure required columns exist, raising a clear error if missing."""
     df = df.copy()
     missing = [c for c in required if c not in df.columns]
     if missing:

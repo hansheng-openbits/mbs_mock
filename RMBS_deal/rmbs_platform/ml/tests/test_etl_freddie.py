@@ -1,3 +1,5 @@
+"""Unit tests for Freddie Mac ETL utilities."""
+
 import tempfile
 from pathlib import Path
 import unittest
@@ -9,7 +11,9 @@ from rmbs_platform.ml.etl_freddie import build_survival_dataset
 
 
 class TestFreddieEtl(unittest.TestCase):
-    def test_build_survival_dataset(self):
+    """Validate survival dataset generation on a small fixture."""
+
+    def test_build_survival_dataset(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             orig_file = tmpdir_path / "orig.csv"
