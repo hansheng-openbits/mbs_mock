@@ -114,9 +114,9 @@
         {"id": "2", "action": "PAY_FEE", "from_fund": "IAF", "amount_rule": "TrusteeFee"},
         {"id": "3", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassA1", "amount_rule": "ClassA1_IntDue"},
         {"id": "4", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassA2", "amount_rule": "ClassA2_IntDue"},
-        {"id": "5", "action": "TRANSFER_FUND", "from_fund": "IAF", "to": "RESERVE", "amount_rule": "MIN(funds.IAF, ReserveShortfall)"},
-        {"id": "6", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassM1", "amount_rule": "ClassM1_IntDue", "condition": "DelinqTrigger == False"},
-        {"id": "7", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassB", "amount_rule": "ClassB_IntDue", "condition": "DelinqTrigger == False"}
+        {"id": "5", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassM1", "amount_rule": "ClassM1_IntDue", "condition": "DelinqTrigger == False"},
+        {"id": "6", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassB", "amount_rule": "ClassB_IntDue", "condition": "DelinqTrigger == False"},
+        {"id": "7", "action": "TRANSFER_FUND", "from_fund": "IAF", "to": "RESERVE", "amount_rule": "MIN(funds.IAF, ReserveShortfall)"}
       ]
     },
     "principal": {

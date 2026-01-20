@@ -523,6 +523,7 @@ def render_results_dashboard(results: Dict[str, Any]) -> None:
                 loss_distribution_chart,
                 "Cumulative Realized Losses",
                 df=df,
+                loss_column="Var.RealizedLoss",
                 height=400
             )
         except Exception as e:

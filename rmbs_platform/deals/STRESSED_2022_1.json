@@ -140,9 +140,9 @@
       "steps": [
         {"id": "1", "action": "PAY_FEE", "from_fund": "IAF", "amount_rule": "ServicingFee"},
         {"id": "2", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassA", "amount_rule": "ClassA_IntDue"},
-        {"id": "3", "action": "TRANSFER_FUND", "from_fund": "IAF", "to": "RESERVE", "amount_rule": "MIN(funds.IAF, MAX(0, 1500000 - accounts.RESERVE))"},
-        {"id": "4", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassM", "amount_rule": "ClassM_IntDue", "condition": "DelinqTrigger == False"},
-        {"id": "5", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassB", "amount_rule": "ClassB_IntDue", "condition": "DelinqTrigger == False AND CumLossTrigger == False"}
+        {"id": "3", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassM", "amount_rule": "ClassM_IntDue", "condition": "DelinqTrigger == False"},
+        {"id": "4", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassB", "amount_rule": "ClassB_IntDue", "condition": "DelinqTrigger == False AND CumLossTrigger == False"},
+        {"id": "5", "action": "TRANSFER_FUND", "from_fund": "IAF", "to": "RESERVE", "amount_rule": "MIN(funds.IAF, MAX(0, 1500000 - accounts.RESERVE))"}
       ]
     },
     "principal": {

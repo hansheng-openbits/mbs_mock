@@ -778,6 +778,17 @@ def run_simulation(
             state.set_variable("InputScheduledInterest", scheduled_interest)
             state.set_variable("InputServicerAdvances", servicer_advances)
             state.set_variable("InputRecoveries", recoveries)
+
+            # Calculate CPR (Constant Prepayment Rate) from prepayment amount
+            # CPR = (Prepayment Amount / Beginning Balance) * 12 (annualized)
+            beginning_balance = getattr(state, '_prev_end_balance', latest_end_balance)
+            if beginning_balance > 0:
+                cpr = (prepayment / beginning_balance) * 12
+            else:
+                cpr = 0.0
+            state.set_variable("CPR", cpr)
+            state._prev_end_balance = end_balance  # Store for next period
+
             state.set_variable("ModelSource", "ML" if ml_used else "RuleBased")
             state.set_variable("MLUsed", ml_used)
 

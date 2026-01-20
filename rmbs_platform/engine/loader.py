@@ -219,10 +219,13 @@ class Account:
         Unique account identifier.
     type : str
         Account type classification.
+    initial_balance : float
+        Starting balance for the account.
     """
 
     id: str
     type: str
+    initial_balance: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -452,7 +455,7 @@ class DealLoader:
 
             # Hydrate Accounts
             accounts = {
-                a["id"]: Account(id=a["id"], type=a["type"])
+                a["id"]: Account(id=a["id"], type=a["type"], initial_balance=a.get("initial_balance", 0.0))
                 for a in data.get("accounts", [])
             }
 

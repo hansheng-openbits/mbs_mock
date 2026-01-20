@@ -227,8 +227,8 @@ class DealState:
         """
         for fund_id in self.def_.funds:
             self.cash_balances[fund_id] = 0.0
-        for acc_id in self.def_.accounts:
-            self.cash_balances[acc_id] = 0.0
+        for acc_id, acc_def in self.def_.accounts.items():
+            self.cash_balances[acc_id] = acc_def.initial_balance
         for b_id, b_def in self.def_.bonds.items():
             self.bonds[b_id] = BondState(b_def.original_balance, b_def.original_balance)
         self.ledgers["CumulativeLoss"] = 0.0

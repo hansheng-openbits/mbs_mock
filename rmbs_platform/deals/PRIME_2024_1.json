@@ -198,20 +198,13 @@
         },
         {
           "id": "4",
-          "action": "TRANSFER_FUND",
-          "from_fund": "IAF",
-          "to": "RESERVE",
-          "amount_rule": "MIN(funds.IAF, ReserveShortfall)"
-        },
-        {
-          "id": "5",
           "action": "PAY_BOND_INTEREST",
           "from_fund": "IAF",
           "group": "ClassM1",
           "amount_rule": "ClassM1_IntDue"
         },
         {
-          "id": "6",
+          "id": "5",
           "action": "PAY_BOND_INTEREST",
           "from_fund": "IAF",
           "group": "ClassM2",
@@ -219,12 +212,19 @@
           "condition": "DelinqTriggerFailed == False"
         },
         {
-          "id": "7",
+          "id": "6",
           "action": "PAY_BOND_INTEREST",
           "from_fund": "IAF",
           "group": "ClassB",
           "amount_rule": "ClassB_IntDue",
           "condition": "DelinqTriggerFailed == False AND OCTriggerFailed == False"
+        },
+        {
+          "id": "7",
+          "action": "TRANSFER_FUND",
+          "from_fund": "IAF",
+          "to": "RESERVE",
+          "amount_rule": "MIN(funds.IAF, ReserveShortfall)"
         }
       ]
     },
