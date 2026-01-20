@@ -1,0 +1,33 @@
+{
+  "created_at": "2024-01-15",
+  "created_by": "Trading Desk",
+  "created_date": "2024-01-15",
+  "description": "Suppressed prepayment scenario for extension risk analysis",
+  "economic_assumptions": {
+    "gdp_growth": 0.015,
+    "hpi_growth": 0.01,
+    "mortgage_rate_10yr_avg": 0.078,
+    "unemployment_rate": 0.048
+  },
+  "name": "Low Prepayment Speed Scenario",
+  "notes": "Low prepay scenario for contraction risk analysis. Assumes high rate environment with negative refinance incentive. Borrowers locked into below-market rates. Useful for analyzing WAL extension scenarios.",
+  "params": {
+    "cdr": 0.012,
+    "cpr": 0.04,
+    "horizon_periods": 84,
+    "ml_feature_source": "simulated",
+    "rate_scenario": "selloff",
+    "rate_sensitivity": 0.5,
+    "severity": 0.35,
+    "start_rate": 0.075,
+    "use_ml_models": true
+  },
+  "prepay_breakdown": {
+    "curtailment": 0.2,
+    "refinance": 0.2,
+    "turnover": 0.6
+  },
+  "scenario_id": "LOW_PREPAY_2024",
+  "scenario_type": "sensitivity",
+  "status": "approved"
+}

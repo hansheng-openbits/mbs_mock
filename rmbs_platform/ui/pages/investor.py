@@ -22,6 +22,14 @@ from ..components.data_display import (
 from ..utils.formatting import create_table_formatter
 
 
+def _rerun() -> None:
+    """Version-safe Streamlit rerun (supports both old/new Streamlit APIs)."""
+    if hasattr(st, "rerun"):
+        st.rerun()
+    elif hasattr(st, "experimental_rerun"):
+        st.experimental_rerun()
+
+
 def render_simulation_controls(api_client: APIClient) -> Dict[str, Any]:
     """
     Render simulation parameter controls with improved UX.
@@ -282,7 +290,7 @@ def render_deal_selector(api_client: APIClient) -> Optional[str]:
 
     with col2:
         if st.button("🔄 Refresh", help="Refresh deal list"):
-            st.experimental_rerun()
+            _rerun()
 
     if selected_deal_id:
         # Show deal summary
@@ -418,7 +426,7 @@ def render_simulation_execution(
                 f"Simulation failed: {e}",
                 details=str(e),
                 show_retry=True,
-                retry_callback=lambda: st.experimental_rerun()
+                retry_callback=_rerun
             )
 
     return None

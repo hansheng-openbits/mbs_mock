@@ -530,7 +530,17 @@ def _load_persisted_scenarios() -> None:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue
+        if not isinstance(payload, dict):
+            continue
+
+        # Normalize legacy scenario schema variants:
+        # - Some curated scenarios use "parameters" instead of "params"
+        if "params" not in payload and "parameters" in payload and isinstance(payload.get("parameters"), dict):
+            payload = dict(payload)
+            payload["params"] = payload.pop("parameters")
+
         scenario_id = payload.get("scenario_id") or path.stem
+        payload["scenario_id"] = scenario_id
         SCENARIO_DB[scenario_id] = payload
 
 _load_persisted_deals()
@@ -1078,14 +1088,25 @@ async def upload_collateral(
     _: None = Depends(lambda x_user_role=Header(default=None, alias="X-User-Role"): _require_role(["arranger"], x_user_role)),
 ) -> Dict[str, Any]:
     """Arranger uploads initial collateral attributes."""
-    COLLATERAL_DB[payload.deal_id] = payload.collateral
+    # Normalize collateral payloads to avoid double-wrapping:
+    # Some callers may send {"deal_id": "...", "data": {...}} while the API also wraps.
+    coll = payload.collateral or {}
+    if isinstance(coll, dict):
+        depth = 0
+        while "data" in coll and isinstance(coll.get("data"), dict) and depth < 5:
+            coll = coll.get("data") or {}
+            depth += 1
+    if not isinstance(coll, dict):
+        raise HTTPException(400, "Collateral payload must be a JSON object")
+
+    COLLATERAL_DB[payload.deal_id] = coll
     path = _collateral_file_path(payload.deal_id)
     with path.open("w", encoding="utf-8") as f:
-        json.dump({"deal_id": payload.deal_id, "data": payload.collateral}, f, indent=2)
+        json.dump({"deal_id": payload.deal_id, "data": coll}, f, indent=2)
     _write_versioned_json(
         COLLATERAL_VERSIONS_DIR,
         payload.deal_id,
-        {"deal_id": payload.deal_id, "data": payload.collateral},
+        {"deal_id": payload.deal_id, "data": coll},
         created_by=payload.created_by,
         source_name=payload.source_name,
     )
@@ -1127,6 +1148,27 @@ async def upload_performance(
 
     df_new = _normalize_perf_df(df_new)
 
+    # Infer tape shape (pool-level vs bond-level vs loan-level) and period coverage
+    schema_type = "pool_level"
+    if "BondId" in df_new.columns:
+        schema_type = "bond_level"
+    elif "LoanId" in df_new.columns:
+        schema_type = "loan_level"
+
+    period_min = None
+    period_max = None
+    n_periods = None
+    if "Period" in df_new.columns and not df_new.empty:
+        try:
+            # Period is normalized to numeric by _normalize_perf_df (best-effort)
+            period_min = int(pd.to_numeric(df_new["Period"], errors="coerce").min())
+            period_max = int(pd.to_numeric(df_new["Period"], errors="coerce").max())
+            n_periods = int(pd.to_numeric(df_new["Period"], errors="coerce").nunique())
+        except Exception:
+            period_min = None
+            period_max = None
+            n_periods = None
+
     df_existing = pd.DataFrame(PERFORMANCE_DB.get(deal_id, []))
     df_all = pd.concat([df_existing, df_new], ignore_index=True)
 
@@ -1148,13 +1190,28 @@ async def upload_performance(
         extension="csv",
         created_by=created_by,
         source_name=source_name or file.filename,
-        extra_metadata={"rows": int(len(df_new))},
+        extra_metadata={
+            "rows_new": int(len(df_new)),
+            "rows_total": int(len(df_all)),
+            "schema_type": schema_type,
+            "period_min": period_min,
+            "period_max": period_max,
+            "n_periods": n_periods,
+            "columns": list(df_new.columns),
+        },
     )
     _log_audit_event(
         "performance.upload",
         actor=created_by,
         deal_id=deal_id,
-        details={"source_name": source_name or file.filename, "rows": int(len(df_new))},
+        details={
+            "source_name": source_name or file.filename,
+            "rows_new": int(len(df_new)),
+            "schema_type": schema_type,
+            "period_min": period_min,
+            "period_max": period_max,
+            "n_periods": n_periods,
+        },
     )
 
     latest_period = int(df_all["Period"].max()) if not df_all.empty else None

@@ -415,12 +415,15 @@ class TestSimulationEdgeCases:
     def test_zero_collateral_balance(self, production_deal_spec):
         """
         Verify simulation handles zero collateral gracefully.
+
+        When collateral balance is zero, cleanup call should trigger immediately
+        and simulation should terminate early after paying off bonds.
         """
         zero_collateral = {
             "original_balance": 100_000_000.0,
             "current_balance": 0.0,  # Already liquidated
         }
-        
+
         df, _ = run_simulation(
             deal_json=production_deal_spec,
             collateral_json=zero_collateral,
@@ -430,9 +433,29 @@ class TestSimulationEdgeCases:
             severity=0.40,
             horizon_periods=12,
         )
-        
+
         # Should still return valid DataFrame
         assert not df.empty
+        # With zero collateral, cleanup call triggers and simulation terminates early
+        assert len(df) < 12, f"Expected early termination due to cleanup call, got {len(df)} periods"
+
+        # Verify cleanup call was triggered
+        if "Var.CleanupCallTriggered" in df.columns:
+            cleanup_triggered = df["Var.CleanupCallTriggered"].iloc[-1]
+            assert cleanup_triggered == True, "Cleanup call should be triggered with zero collateral"
+
+        # Verify collateral inputs are zero throughout
+        if "Var.InputEndBalance" in df.columns:
+            end_balances = df["Var.InputEndBalance"].unique()
+            assert all(b == 0.0 for b in end_balances), f"Expected all zero end balances, got {end_balances}"
+
+        if "Var.InputInterestCollected" in df.columns:
+            interest_vals = df["Var.InputInterestCollected"].unique()
+            assert all(i == 0.0 for i in interest_vals), f"Expected all zero interest, got {interest_vals}"
+
+        if "Var.InputPrincipalCollected" in df.columns:
+            principal_vals = df["Var.InputPrincipalCollected"].unique()
+            assert all(p == 0.0 for p in principal_vals), f"Expected all zero principal, got {principal_vals}"
     
     def test_extreme_prepay_scenario(
         self,

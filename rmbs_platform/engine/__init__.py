@@ -750,7 +750,7 @@ def run_simulation(
                 cpr,
                 cdr,
                 severity,
-                start_balance=latest_end_balance if latest_end_balance > 0 else None,
+                start_balance=latest_end_balance,
             )
 
         # Process projected cashflows through waterfall
@@ -924,12 +924,14 @@ def _execute_cleanup_call(
             bond_def = state.def_.bonds.get(bond_id)
             if bond_def:
                 coupon_rate = 0.0
-                coupon_def = bond_def.coupon
-                if hasattr(coupon_def, "fixed_rate") and coupon_def.fixed_rate:
-                    coupon_rate = float(coupon_def.fixed_rate)
-                elif hasattr(coupon_def, "margin") and coupon_def.margin:
+                if hasattr(bond_def, "fixed_rate") and bond_def.fixed_rate:
+                    coupon_rate = float(bond_def.fixed_rate)
+                elif hasattr(bond_def, "margin") and bond_def.margin:
                     # Float: use a proxy rate
-                    coupon_rate = 0.05 + float(coupon_def.margin)
+                    coupon_rate = 0.05 + float(bond_def.margin)
+                else:
+                    # Default coupon rate if not specified
+                    coupon_rate = 0.05
 
                 accrued_interest = principal_payoff * (coupon_rate / 12)
             else:

@@ -1,8 +1,8 @@
 # RMBS Platform - Comprehensive Industry Assessment
 
-**Assessment Date:** January 19, 2026  
-**Platform Version:** 1.2.0  
-**Total Codebase:** ~19,500 lines of Python  
+**Assessment Date:** January 20, 2026  
+**Platform Version:** 1.2.x (working branch)  
+**Total Codebase:** ~19,500+ lines of Python  
 **Assessor:** AI Architectural Review
 
 ---
@@ -19,7 +19,7 @@ The RMBS Platform has evolved into a **robust, feature-complete structured finan
 | ML Integration | A | Industry-leading |
 | API Design | A | Production-ready |
 | Reporting | A- | Strong |
-| Testing | B | Needs expansion |
+| Testing | B+ | Expanded, needs coverage metrics |
 | Documentation | A | Comprehensive |
 | Operational Readiness | B+ | Good foundation |
 
@@ -75,10 +75,10 @@ rmbs_platform/
 │   └── loan_export.py   # Regulatory exports
 ├── ml/                  # 2,646 lines - Machine learning
 ├── api_main.py          # REST API (1,914 lines)
-└── ui_app.py            # Streamlit UI (1,014 lines)
+└── ui/ + ui_app.py       # Modular Streamlit UI (persona pages + components)
 ```
 
-**Assessment:** The modular architecture follows separation of concerns principles. Each module has a single responsibility with clear interfaces.
+**Assessment:** The architecture follows separation of concerns principles. The UI has been refactored from a monolith into a modular structure (`ui/` package + `ui_app.py` entrypoint), improving maintainability and persona clarity.
 
 ---
 
@@ -166,13 +166,19 @@ Investor (8 endpoints)
 ├── POST /scenarios/{id}/approve
 └── GET  /scenarios/{id}
 
+Models (1 endpoint)
+└── GET  /models/registry  # List available ML models (keys + metadata)
+
 Auditor (3 endpoints)
 ├── GET  /audit/events
 ├── GET  /audit/events/download
 └── GET  /audit/run/{job_id}/bundle
 ```
 
-**Assessment:** API design is **production-ready** with comprehensive endpoint coverage for all personas.
+**Assessment:** API design is **production-ready** with comprehensive endpoint coverage for all personas. Recent improvements include:
+- Simulation request supports **horizon_periods** (projection length)
+- Investor can supply **scenario_id** and explicit **model selection** (`prepay_model_key` / `default_model_key`)
+- `/deals` access expanded to support operational roles for tape upload workflows
 
 ---
 
@@ -279,15 +285,23 @@ The `requirements.txt` properly pins all dependencies:
 
 ### 7.1 Current Test Suite
 
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| `test_rbac.py` | 3 | RBAC enforcement |
-| `test_scenarios.py` | 1 | Scenario CRUD |
-| `test_validation.py` | 2 | Input validation |
-| `test_audit_events.py` | 1 | Audit trail |
-| `test_audit_bundle.py` | 1 | Evidence export |
-| `test_etl_freddie.py` | 1 | ETL pipeline |
-| **Total** | **8** | **Limited** |
+The test suite has been expanded beyond the initial smoke tests. Current `unit_tests/` modules include:
+
+- `test_api_integration.py`: API endpoints + RBAC + integration paths
+- `test_audit_bundle.py`: evidence bundle generation
+- `test_audit_events.py`: audit logging and event structure
+- `test_credit_enhancement.py`: OC/IC, triggers, loss allocation
+- `test_currency_fx.py`: FX conversion and currency utilities
+- `test_e2e_simulation.py`: end-to-end simulation workflows
+- `test_loan_export_comparison.py`: loan export formats + portfolio comparison
+- `test_ml_models.py`: model wrappers + feature engineering alignment
+- `test_rbac.py`: RBAC enforcement
+- `test_scenarios.py`: scenario CRUD + governance actions
+- `test_stress_testing.py`: CCAR + sensitivity + Monte Carlo
+- `test_validation.py`: request/schema validation
+- `test_waterfall.py`: waterfall behavior (sequential/pro-rata + triggers)
+
+**Assessment:** The suite is meaningfully broader, but the platform still lacks a quantified coverage target and CI gating on coverage thresholds.
 
 ### 7.2 Testing Gaps ⚠️
 
@@ -300,7 +314,10 @@ The `requirements.txt` properly pins all dependencies:
 | Credit enhancement | Medium | Add trigger tests |
 | Loan export formats | Low | Add format validation |
 
-**Assessment:** Testing is the **primary gap**. Need 50+ additional tests for production confidence.
+**Assessment:** Testing is improved but still a key gap for mission-critical use. Next best-practice steps:
+- Add **coverage reporting** (line/branch) and enforce minimum thresholds in CI
+- Add **golden-file regression tests** for standard deals (factor/distribution snapshots)
+- Add **performance regression tests** (large loan tapes, stress runs)
 
 ---
 

@@ -255,7 +255,7 @@ class CollateralUploadRequest(BaseModel):
                     "loan_count": 500,
                     "avg_fico": 720,
                     "avg_ltv": 75,
-                    "source_uri": "sample_data/loan_tape.csv",
+                    "source_uri": "datasets/SAMPLE_RMBS_2024/loan_tape.csv",
                 },
             }
         }

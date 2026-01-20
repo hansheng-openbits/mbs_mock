@@ -1,0 +1,78 @@
+{
+  "created_at": "2024-01-15",
+  "created_by": "Risk Management",
+  "created_date": "2024-01-15",
+  "description": "Severe economic stress scenario aligned with Federal Reserve CCAR severely adverse parameters",
+  "economic_assumptions": {
+    "gdp_growth": -0.065,
+    "hpi_growth": -0.25,
+    "mortgage_rate_10yr_avg": 0.055,
+    "peak_unemployment_quarter": 10,
+    "recession_duration_quarters": 8,
+    "unemployment_rate": 0.1,
+    "vix_peak": 65
+  },
+  "name": "Severe Stress / CCAR Severely Adverse",
+  "notes": "Severe stress scenario modeled on 2008-2009 financial crisis. Assumes 10% peak unemployment, 25% cumulative HPI decline, and significantly elevated defaults. Tests capital adequacy under extreme conditions.",
+  "params": {
+    "cdr": 0.06,
+    "cpr": 0.03,
+    "horizon_periods": 60,
+    "ml_feature_source": "simulated",
+    "rate_scenario": "volatile",
+    "rate_sensitivity": 0.5,
+    "severity": 0.5,
+    "start_rate": 0.045,
+    "use_ml_models": true
+  },
+  "quarterly_factors": {
+    "Q1": {
+      "cdr_mult": 1.5,
+      "hpi_change": -0.02,
+      "unemployment": 0.055
+    },
+    "Q2": {
+      "cdr_mult": 2.5,
+      "hpi_change": -0.05,
+      "unemployment": 0.07
+    },
+    "Q3": {
+      "cdr_mult": 3.5,
+      "hpi_change": -0.08,
+      "unemployment": 0.085
+    },
+    "Q4": {
+      "cdr_mult": 4.0,
+      "hpi_change": -0.08,
+      "unemployment": 0.095
+    },
+    "Q5": {
+      "cdr_mult": 4.0,
+      "hpi_change": -0.05,
+      "unemployment": 0.1
+    },
+    "Q6": {
+      "cdr_mult": 3.5,
+      "hpi_change": -0.03,
+      "unemployment": 0.098
+    },
+    "Q7": {
+      "cdr_mult": 3.0,
+      "hpi_change": -0.01,
+      "unemployment": 0.092
+    },
+    "Q8": {
+      "cdr_mult": 2.5,
+      "hpi_change": 0.01,
+      "unemployment": 0.085
+    }
+  },
+  "scenario_id": "SEVERE_STRESS_2024",
+  "scenario_type": "severely_adverse",
+  "status": "approved",
+  "trigger_impacts": {
+    "delinquency_increase": 4.0,
+    "prepay_reduction": 0.6,
+    "severity_increase": 0.15
+  }
+}

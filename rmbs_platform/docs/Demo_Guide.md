@@ -14,20 +14,22 @@ uvicorn api_main:app --reload --port 8000
 
 ### 2. Start the UI
 ```bash
-streamlit run ui_app.py
+streamlit run ui_app.py --server.headless true --server.port 8501
 ```
 
 ### 3. Access the Platform
-- **UI**: http://localhost:8501 (Modern modular interface)
+- **UI**: http://localhost:8501 (Modular persona-based interface)
 - **API Docs**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
 ### 4. UI Features
-The new modular UI provides:
+The modular UI provides:
+- **Persona-Based Navigation**: Arranger, Servicer, Investor, and Auditor interfaces
 - **Loading States**: Progress indicators for long operations
 - **Interactive Charts**: Plotly-based visualizations with hover details
 - **KPI Dashboards**: Key metrics displayed prominently
-- **Responsive Design**: Adaptive layouts for different screen sizes
+- **ML Model Selection**: Choose from available prepayment and default models
+- **Scenario Management**: Create and compare custom scenarios
 - **Error Recovery**: Contextual error messages with retry options
 
 ---
@@ -465,36 +467,42 @@ Principal Waterfall (Trigger Active):
 ## Sample Data Summary
 
 ### Deals Available
-| Deal ID | Type | Size | Tranches | Status |
-|---------|------|------|----------|--------|
-| PRIME_2024_1 | Prime RMBS | $500M | 4 | New issuance |
-| NONQM_2023_1 | Non-QM | $300M | 4 | Seasoned (18mo) |
-| STRESSED_2022_1 | Subprime | $250M | 3 | Stressed/Triggers |
-| SAMPLE_RMBS_2024 | Demo | $10M | 2 | Basic example |
-| FREDDIE_SAMPLE_2017_2020 | Agency | Various | 2 | Freddie Mac data |
+| Deal ID | Type | Size | Tranches | Status | Data Location |
+|---------|------|------|----------|--------|---------------|
+| PRIME_2024_1 | Prime RMBS | $500M | 4 | New issuance | `datasets/PRIME_2024_1/` |
+| NONQM_2023_1 | Non-QM | $300M | 4 | Seasoned (18mo) | `datasets/NONQM_2023_1/` |
+| STRESSED_2022_1 | Subprime | $250M | 3 | Stressed/Triggers | `datasets/STRESSED_2022_1/` |
+| SAMPLE_RMBS_2024 | Demo | $10M | 2 | Basic example | `datasets/SAMPLE_RMBS_2024/` |
+| FREDDIE_SAMPLE_2017_2020 | Agency | Various | 2 | Freddie Mac data | `datasets/FREDDIE_SAMPLE_2017_2020/` |
+| DEAL_2024_001 | Prime RMBS | $500M | 4 | New issuance | `datasets/DEAL_2024_001/` |
 
 ### Scenarios Available
-| Scenario ID | Type | CPR | CDR | Use Case |
-|-------------|------|-----|-----|----------|
-| BASE_CASE_2024 | Baseline | 8% | 0.8% | Standard projection |
-| RATE_RALLY_2024 | Custom | 18% | 0.6% | Prepay acceleration |
-| MILD_RECESSION_2024 | Adverse | 5% | 2.5% | Moderate stress |
-| SEVERE_STRESS_2024 | Severely Adverse | 3% | 6% | CCAR stress test |
-| HIGH_PREPAY_2024 | Sensitivity | 25% | 0.5% | Extension risk |
-| LOW_PREPAY_2024 | Sensitivity | 4% | 1.2% | Contraction risk |
+| Scenario ID | Type | CPR | CDR | Severity | ML Support | Use Case |
+|-------------|------|-----|-----|----------|------------|----------|
+| BASE_CASE_2024 | Baseline | 8% | 0.8% | 32% | Yes | Standard projection |
+| RATE_RALLY_2024 | Custom | 18% | 0.6% | 30% | Yes | Prepay acceleration |
+| MILD_RECESSION_2024 | Adverse | 5% | 2.5% | 40% | Yes | Moderate stress |
+| SEVERE_STRESS_2024 | Severely Adverse | 3% | 6% | 50% | No | CCAR stress test |
+| HIGH_PREPAY_2024 | Sensitivity | 25% | 0.5% | 30% | Yes | Extension risk |
+| LOW_PREPAY_2024 | Sensitivity | 4% | 1.2% | 35% | Yes | Contraction risk |
 
 ### Collateral Files
-| File | Loans | Balance | Avg FICO | Avg LTV |
+| Deal ID | File | Loans | Balance | Avg FICO | Avg LTV | Loan Tape |
 |------|-------|---------|----------|---------|
-| PRIME_2024_1.json | 1,847 | $500M | 748 | 72.5% |
-| NONQM_2023_1.json | 892 | $285M | 712 | 75.8% |
-| demo_loan_tape.csv | 30 | ~$10M | 735 | 76% |
+| PRIME_2024_1 | collateral.json | 1,847 | $500M | 748 | 72.5% | Yes |
+| NONQM_2023_1 | collateral.json | 892 | $285M | 712 | 75.8% | No |
+| SAMPLE_RMBS_2024 | collateral.json | 32 | $10M | 735 | 76% | Yes (demo) |
+| FREDDIE_SAMPLE_2017_2020 | collateral.json | 502 | $100M+ | 750 | 75% | Yes |
+| STRESSED_2022_1 | collateral.json | 1,250 | $250M | 665 | 88.5% | No |
 
 ### Performance Data
-| File | Periods | Status |
+| Deal ID | File | Periods | Status | Servicer Tapes |
 |------|---------|--------|
-| PRIME_2024_1.csv | 12 months | Performing |
-| NONQM_2023_1.csv | 18 months | Elevated DQ |
+| PRIME_2024_1 | servicer_tape.csv | 12 months | Performing | Monthly |
+| NONQM_2023_1 | servicer_tape.csv | 18 months | Elevated DQ | Monthly |
+| SAMPLE_RMBS_2024 | servicer_tape.csv | 8 months | Performing | Monthly |
+| FREDDIE_SAMPLE_2017_2020 | servicer_tape.csv | 6 months | Performing | Monthly |
+| STRESSED_2022_1 | servicer_tape.csv | 34 months | Stressed | Monthly |
 
 ---
 
@@ -513,10 +521,11 @@ Principal Waterfall (Trigger Active):
 4. Review loss allocation
 
 ### Investor (Analytics) Demo
-1. Run cashflow simulations
-2. Compare multiple scenarios
-3. Analyze yield and WAL
-4. Stress test the structure
+1. Run cashflow simulations with ML model selection
+2. Compare multiple scenarios (saved + manual)
+3. Analyze yield and WAL with configurable horizons
+4. Stress test the structure with CCAR scenarios
+5. Track simulation job IDs and results
 
 ### Auditor (Review) Demo
 1. Review audit trail
@@ -530,17 +539,19 @@ Principal Waterfall (Trigger Active):
 
 ### Modern Interface Components
 - **🎯 Simulation Controls**: Sliders and inputs with real-time validation
+- **🤖 ML Model Selection**: Choose from available prepayment and default models (RSF/Cox)
 - **📊 KPI Dashboards**: Key metrics (WAL, losses, balances) prominently displayed
 - **📈 Interactive Charts**: Bond balance evolution, prepayment curves, loss distribution
-- **🔄 Scenario Comparison**: Side-by-side analysis of different assumptions
+- **🔄 Scenario Management**: Create, save, and compare custom scenarios
 - **💾 Export Capabilities**: CSV downloads with formatted data
 - **⚡ Loading States**: Progress bars and status indicators during computations
+- **📋 Job Tracking**: Simulation job IDs displayed in results summary
 
 ### Persona-Specific Workflows
-- **🏗️ Arranger**: Deal structuring with validation feedback
-- **📊 Servicer**: Performance upload with reconciliation summaries
-- **📈 Investor**: Advanced analytics with ML diagnostics
-- **🔍 Auditor**: Evidence packages and audit trails
+- **🏗️ Arranger**: Deal structuring with validation feedback, auto-capture deal IDs
+- **📊 Servicer**: Performance upload with reconciliation summaries, monthly tape management
+- **📈 Investor**: Advanced analytics with ML diagnostics, scenario comparison, horizon selection
+- **🔍 Auditor**: Evidence packages and audit trails (baseline implementation)
 
 ## Tips for Effective Demos
 
@@ -549,7 +560,11 @@ Principal Waterfall (Trigger Active):
 3. **Highlight Triggers**: Demonstrate how triggers redirect cashflows
 4. **Use Realistic Numbers**: All data reflects actual RMBS market conventions
 5. **Show Modern UX**: Demonstrate loading states, interactive charts, and responsive design
-6. **Export Results**: Show formatted CSV exports for further analysis
+6. **ML Integration**: Toggle ML models on/off to show rule-based vs. ML cashflows
+7. **Scenario Management**: Create custom scenarios and compare side-by-side
+8. **Data Organization**: Show how deal data is organized in `datasets/` folders
+9. **Job Tracking**: Display simulation job IDs in the results summary
+10. **Export Results**: Show formatted CSV exports for further analysis
 
 ---
 
@@ -570,16 +585,24 @@ curl http://localhost:8000/health
 - Clear browser cache and reload
 - Check that all UI modules are properly installed
 - Verify Python path includes the rmbs_platform directory
+- Ensure using `streamlit run ui_app.py --server.headless true --server.port 8501`
 
 **Missing Data**:
-- Ensure all JSON files are in correct directories
-- Check file permissions
-- Verify deal and collateral files match expected schema
+- Ensure deal data is organized in `datasets/[DEAL_ID]/` folders
+- Check file permissions on datasets directory
+- Verify deal_spec.json, collateral.json, and servicer_tape.csv exist
+- Check that loan_tape.csv is present for ML model usage
 
 **New UI Features Not Working**:
-- Confirm using `streamlit run ui_app.py` (not legacy version)
+- Confirm using `streamlit run ui_app.py` (modular UI)
 - Check browser console for JavaScript errors
 - Verify Plotly and other dependencies are installed
+- Ensure all persona pages (arranger.py, servicer.py, investor.py) are present
+
+**ML Model Issues**:
+- Verify loan_tape.csv is present in deal dataset folder
+- Check that ML model registry is properly configured
+- Ensure model files exist in models/ directory
 
 ---
 
@@ -598,7 +621,9 @@ curl -X POST "http://localhost:8000/simulate" \
     "cdr": 0.008,
     "severity": 0.32,
     "horizon_periods": 60,
-    "use_ml_models": true
+    "use_ml_models": true,
+    "prepay_model_key": "prepay_rsf",
+    "default_model_key": "default_cox"
   }'
 ```
 
@@ -611,7 +636,10 @@ curl -X POST "http://localhost:8000/simulate" \
   "scenario": {
     "cpr": 0.08,
     "cdr": 0.008,
-    "severity": 0.32
+    "severity": 0.32,
+    "use_ml_models": true,
+    "prepay_model_key": "prepay_rsf",
+    "default_model_key": "default_cox"
   },
   "summary": {
     "total_periods": 60,
@@ -778,3 +806,4 @@ Effect: Permanent lock-out of subordinate payments
 ---
 
 *Demo data last updated: January 2026*
+*Codebase updated: January 2026 - Modular UI, datasets/ organization, ML model selection*

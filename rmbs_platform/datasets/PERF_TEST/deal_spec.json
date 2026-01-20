@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "deal_id": "PERF_TEST",
+    "deal_name": "API Test Deal",
+    "asset_type": "RMBS",
+    "version": "1.0"
+  },
+  "dates": {
+    "cutoff_date": "2024-01-01",
+    "closing_date": "2024-01-30",
+    "first_payment_date": "2024-02-25",
+    "maturity_date": "2054-01-01",
+    "payment_frequency": "MONTHLY",
+    "day_count": "30_360"
+  },
+  "funds": [
+    {
+      "id": "IAF",
+      "description": "Interest Available Funds"
+    },
+    {
+      "id": "PAF",
+      "description": "Principal Available Funds"
+    }
+  ],
+  "accounts": [],
+  "variables": {
+    "ClassA_Int": "bonds.ClassA.balance * 0.05 / 12"
+  },
+  "tests": [],
+  "bonds": [
+    {
+      "id": "ClassA",
+      "type": "NOTE",
+      "original_balance": 10000000.0,
+      "priority": {
+        "interest": 1,
+        "principal": 1
+      },
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.05
+      }
+    }
+  ],
+  "waterfalls": {
+    "interest": {
+      "steps": [
+        {
+          "id": "1",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassA",
+          "amount_rule": "ClassA_Int"
+        }
+      ]
+    },
+    "principal": {
+      "steps": [
+        {
+          "id": "1",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassA",
+          "amount_rule": "ALL"
+        }
+      ]
+    }
+  }
+}

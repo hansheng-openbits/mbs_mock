@@ -1,0 +1,35 @@
+{
+  "created_at": "2024-01-15",
+  "created_by": "Risk Management",
+  "created_date": "2024-01-15",
+  "description": "Moderate economic downturn with elevated defaults but contained losses",
+  "economic_assumptions": {
+    "gdp_growth": -0.015,
+    "hpi_growth": -0.08,
+    "mortgage_rate_10yr_avg": 0.072,
+    "peak_unemployment_quarter": 6,
+    "recession_duration_quarters": 4,
+    "unemployment_rate": 0.065
+  },
+  "name": "Mild Recession Scenario",
+  "notes": "Mild recession with 2-quarter GDP contraction, unemployment rising to 6.5%, and 8% HPI decline. Assumes policy support limits deeper damage.",
+  "params": {
+    "cdr": 0.025,
+    "cpr": 0.05,
+    "horizon_periods": 60,
+    "ml_feature_source": "simulated",
+    "rate_scenario": "selloff",
+    "rate_sensitivity": 0.8,
+    "severity": 0.4,
+    "start_rate": 0.055,
+    "use_ml_models": true
+  },
+  "scenario_id": "MILD_RECESSION_2024",
+  "scenario_type": "adverse",
+  "status": "approved",
+  "trigger_impacts": {
+    "delinquency_increase": 1.8,
+    "prepay_reduction": 0.4,
+    "severity_increase": 0.05
+  }
+}

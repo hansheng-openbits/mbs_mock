@@ -4,10 +4,10 @@
     "current_balance": 112438000.0,
     "cutoff_date": "201702",
     "loan_data": {
-      "performance_uri": "sample_data_freddie/servicer_{period}.csv",
+      "performance_uri": "datasets/FREDDIE_SAMPLE_2017_2020/servicer_{period}.csv",
       "schema_ref": {
         "format": "csv",
-        "source_uri": "sample_data_freddie/loan_tape.csv"
+        "source_uri": "datasets/FREDDIE_SAMPLE_2017_2020/loan_tape.csv"
       }
     },
     "ml_config": {

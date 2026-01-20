@@ -15,6 +15,14 @@ import json
 import pandas as pd
 
 
+def _rerun() -> None:
+    """Version-safe Streamlit rerun (supports both old/new Streamlit APIs)."""
+    if hasattr(st, "rerun"):
+        st.rerun()
+    elif hasattr(st, "experimental_rerun"):
+        st.experimental_rerun()
+
+
 def render_deal_upload_section(api_client: APIClient) -> None:
     """Render the deal specification upload and editing section."""
     st.subheader("📝 Deal Specification")
@@ -321,7 +329,7 @@ def render_deal_management_section(api_client: APIClient) -> None:
     col1, col2 = st.columns([4, 1])
     with col2:
         if st.button("🔄 Refresh", help="Refresh deal list"):
-            st.experimental_rerun()
+            _rerun()
 
     # Get deals
     deals = api_client.get_deals()
