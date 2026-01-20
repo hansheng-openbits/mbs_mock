@@ -1,0 +1,460 @@
+{
+  "meta": {
+    "deal_id": "DEAL_2024_001",
+    "deal_name": "Freddie Mac Sample 2017-2020",
+    "asset_type": "NON_AGENCY_RMBS",
+    "version": "1.1"
+  },
+  "currency": "USD",
+  "jurisdiction": {
+    "country": "US",
+    "governing_law": "New York",
+    "tax_regime": "REMIC"
+  },
+  "dates": {
+    "cutoff_date": "2024-01-01",
+    "closing_date": "2024-01-30",
+    "first_payment_date": "2024-02-25",
+    "maturity_date": "2054-01-01",
+    "payment_frequency": "MONTHLY",
+    "day_count": "30_360",
+    "business_day_convention": "FOLLOWING",
+    "payment_delay_days": 2
+  },
+  "documents": [
+    {
+      "type": "PSA",
+      "description": "Pooling and Servicing Agreement"
+    },
+    {
+      "type": "Prospectus",
+      "description": "Offering memorandum and prospectus supplement"
+    }
+  ],
+  "parties": {
+    "issuer": {
+      "name": "Sample RMBS Trust 2024-1",
+      "lei": "5493001KJTIIGC8Y1R12"
+    },
+    "trustee": {
+      "name": "Example Trust Company",
+      "lei": "5493009ZC9TC1D2XGZ10"
+    },
+    "servicer": {
+      "name": "Sample Servicing LLC",
+      "lei": "549300BN3L1KJ2ABCD34"
+    },
+    "sponsor": {
+      "name": "Example Mortgage Originator Inc."
+    },
+    "administrator": {
+      "name": "Deal Administration Services LLC"
+    }
+  },
+  "servicing": {
+    "servicing_fee": {
+      "basis": "CURRENT_BALANCE",
+      "rate_bps": 25.0
+    },
+    "advancing": {
+      "enabled": true,
+      "advance_types": [
+        "P&I",
+        "Taxes",
+        "Insurance"
+      ],
+      "advance_limit_rule": "collateral.current_balance * 0.02"
+    }
+  },
+  "bonds": [
+    {
+      "id": "ClassA1",
+      "type": "NOTE",
+      "original_balance": 150000000.0,
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.0475
+      },
+      "priority": {
+        "interest": 1,
+        "principal": 1
+      },
+      "interest_rules": {
+        "accrue_on": "CURRENT_BALANCE",
+        "shortfall_treatment": "CARRY"
+      },
+      "principal_rules": {
+        "distribution_type": "SEQUENTIAL",
+        "allocation_weight": "BALANCE"
+      }
+    },
+    {
+      "id": "ClassA2",
+      "type": "NOTE",
+      "original_balance": 60000000.0,
+      "coupon": {
+        "kind": "FLOAT",
+        "index": "SOFR_1M",
+        "margin": 0.0175,
+        "cap": 0.08,
+        "floor": 0.0
+      },
+      "priority": {
+        "interest": 2,
+        "principal": 2
+      },
+      "interest_rules": {
+        "accrue_on": "CURRENT_BALANCE",
+        "shortfall_treatment": "CARRY"
+      },
+      "principal_rules": {
+        "distribution_type": "SEQUENTIAL",
+        "allocation_weight": "BALANCE"
+      }
+    },
+    {
+      "id": "ClassB",
+      "type": "NOTE",
+      "original_balance": 25000000.0,
+      "coupon": {
+        "kind": "VARIABLE",
+        "variable_cap": "NetWAC",
+        "variable_floor": "0.04"
+      },
+      "priority": {
+        "interest": 3,
+        "principal": 3
+      },
+      "interest_rules": {
+        "accrue_on": "CURRENT_BALANCE",
+        "shortfall_treatment": "CARRY"
+      },
+      "principal_rules": {
+        "distribution_type": "SEQUENTIAL",
+        "allocation_weight": "BALANCE"
+      }
+    },
+    {
+      "id": "ClassIO",
+      "type": "IO",
+      "original_balance": 0.0,
+      "coupon": {
+        "kind": "WAC"
+      },
+      "priority": {
+        "interest": 4,
+        "principal": 99
+      },
+      "interest_rules": {
+        "accrue_on": "ORIGINAL_BALANCE",
+        "shortfall_treatment": "WRITE_OFF"
+      },
+      "principal_rules": {
+        "distribution_type": "CUSTOM",
+        "allocation_weight": "FACTOR"
+      }
+    },
+    {
+      "id": "ClassR",
+      "type": "RESIDUAL",
+      "original_balance": 15000000.0,
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.0
+      },
+      "priority": {
+        "interest": 99,
+        "principal": 99
+      },
+      "interest_rules": {
+        "accrue_on": "CURRENT_BALANCE",
+        "shortfall_treatment": "CARRY"
+      },
+      "principal_rules": {
+        "distribution_type": "CUSTOM",
+        "allocation_weight": "BALANCE"
+      }
+    }
+  ],
+  "fees": [
+    {
+      "id": "ServicingFee",
+      "seniority": 1,
+      "pay_from_fund": "IAF",
+      "amount_rule": "ServicingFeeAmount",
+      "unpaid_treatment": "CARRY"
+    },
+    {
+      "id": "TrusteeFee",
+      "seniority": 2,
+      "pay_from_fund": "IAF",
+      "amount_rule": "TrusteeFeeAmount",
+      "unpaid_treatment": "CARRY"
+    },
+    {
+      "id": "CustodianFee",
+      "seniority": 3,
+      "pay_from_fund": "IAF",
+      "amount_rule": "CustodianFeeAmount",
+      "unpaid_treatment": "CARRY"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "RESERVE",
+      "type": "RESERVE",
+      "target_rule": "ReserveTarget"
+    },
+    {
+      "id": "ADVANCE",
+      "type": "ADVANCE"
+    }
+  ],
+  "funds": [
+    {
+      "id": "IAF",
+      "description": "Interest Available Funds"
+    },
+    {
+      "id": "PAF",
+      "description": "Principal Available Funds"
+    }
+  ],
+  "ledgers": [
+    {
+      "id": "InterestShortfall",
+      "type": "INTEREST_SHORTFALL"
+    },
+    {
+      "id": "PDL",
+      "type": "PRINCIPAL_DEFICIT"
+    }
+  ],
+  "groups": {
+    "SENIOR": [
+      "ClassA1",
+      "ClassA2"
+    ],
+    "MEZZ": [
+      "ClassB"
+    ],
+    "IO": [
+      "ClassIO"
+    ],
+    "RESIDUAL": [
+      "ClassR"
+    ]
+  },
+  "variables": {
+    "ServicingFeeRate": "0.0025 / 12",
+    "ServicingFeeAmount": "collateral.current_balance * ServicingFeeRate",
+    "TrusteeFeeAmount": "MAX(7500, collateral.current_balance * 0.0001 / 12)",
+    "CustodianFeeAmount": "2000",
+    "IndexRate": "0.052",
+    "NetWAC": "0.055",
+    "ReserveTarget": "MAX(1250000, collateral.original_balance * 0.005)",
+    "ReserveDeficit": "MAX(0, ReserveTarget - funds.RESERVE)",
+    "ClassA1_IntDue": "bonds.ClassA1.balance * (0.0475 / 12)",
+    "ClassA2_IntDue": "bonds.ClassA2.balance * (IndexRate + 0.0175) / 12",
+    "ClassB_IntDue": "bonds.ClassB.balance * (MAX(0.04, MIN(NetWAC, 0.08)) / 12)",
+    "PoolFactor": "collateral.current_balance / collateral.original_balance",
+    "TurboTrigger": "tests.DelinquencyTest.failed or tests.OCTest.failed"
+  },
+  "tests": [
+    {
+      "id": "DelinquencyTest",
+      "kind": "DELINQ",
+      "calc": {
+        "value_rule": "0.045",
+        "rolling_average_months": 3,
+        "numerator_rule": "0.045",
+        "denominator_rule": "1"
+      },
+      "threshold": {
+        "rule": "0.06"
+      },
+      "pass_if": "VALUE_LT_THRESHOLD",
+      "effects": [
+        {
+          "set_flag": "TurboTrigger"
+        }
+      ]
+    },
+    {
+      "id": "OCTest",
+      "kind": "OC",
+      "calc": {
+        "value_rule": "(collateral.current_balance - bonds.ClassA1.balance - bonds.ClassA2.balance) / MAX(1, bonds.ClassB.balance)",
+        "rolling_average_months": 1
+      },
+      "threshold": {
+        "rule": "0.12"
+      },
+      "pass_if": "VALUE_GEQ_THRESHOLD",
+      "effects": [
+        {
+          "set_flag": "OCTestPass",
+          "flag_value_if_pass": true
+        }
+      ]
+    },
+    {
+      "id": "ICTest",
+      "kind": "IC",
+      "calc": {
+        "value_rule": "funds.IAF / MAX(1, bonds.ClassA1.balance * (0.0475 / 12) + bonds.ClassA2.balance * ((0.052 + 0.0175) / 12) + bonds.ClassB.balance * (MAX(0.04, MIN(0.055, 0.08)) / 12))"
+      },
+      "threshold": {
+        "rule": "1.15"
+      },
+      "pass_if": "VALUE_GEQ_THRESHOLD",
+      "effects": [
+        {
+          "set_flag": "ICTestPass",
+          "flag_value_if_pass": true
+        }
+      ]
+    }
+  ],
+  "waterfalls": {
+    "interest": {
+      "steps": [
+        {
+          "id": "I-1",
+          "action": "PAY_FEE",
+          "from_fund": "IAF",
+          "amount_rule": "ServicingFeeAmount",
+          "unpaid_ledger_id": "InterestShortfall"
+        },
+        {
+          "id": "I-2",
+          "action": "PAY_FEE",
+          "from_fund": "IAF",
+          "amount_rule": "TrusteeFeeAmount",
+          "unpaid_ledger_id": "InterestShortfall"
+        },
+        {
+          "id": "I-3",
+          "action": "PAY_FEE",
+          "from_fund": "IAF",
+          "amount_rule": "CustodianFeeAmount",
+          "unpaid_ledger_id": "InterestShortfall"
+        },
+        {
+          "id": "I-4",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassA1",
+          "amount_rule": "ClassA1_IntDue"
+        },
+        {
+          "id": "I-5",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassA2",
+          "amount_rule": "ClassA2_IntDue"
+        },
+        {
+          "id": "I-6",
+          "action": "TRANSFER_FUND",
+          "from_fund": "IAF",
+          "to": "RESERVE",
+          "amount_rule": "MIN(funds.IAF, ReserveDeficit)"
+        },
+        {
+          "id": "I-7",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassB",
+          "amount_rule": "ClassB_IntDue",
+          "condition": "TurboTrigger == False"
+        },
+        {
+          "id": "I-8",
+          "action": "TRANSFER_FUND",
+          "from_fund": "IAF",
+          "to": "PAF",
+          "amount_rule": "REMAINING"
+        }
+      ]
+    },
+    "principal": {
+      "steps": [
+        {
+          "id": "P-1",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassA1",
+          "amount_rule": "ALL"
+        },
+        {
+          "id": "P-2",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassA2",
+          "amount_rule": "ALL"
+        },
+        {
+          "id": "P-3",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassB",
+          "amount_rule": "ALL"
+        },
+        {
+          "id": "P-4",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassR",
+          "amount_rule": "REMAINING"
+        }
+      ]
+    },
+    "loss_allocation": {
+      "loss_source_rule": "RealizedLoss",
+      "write_down_order": [
+        "ClassR",
+        "ClassB",
+        "ClassA2",
+        "ClassA1"
+      ],
+      "write_down_style": "REDUCE_BALANCE"
+    }
+  },
+  "hedges": [
+    {
+      "id": "Swap01",
+      "type": "SWAP",
+      "notional_schedule": [
+        {
+          "date": "2024-02-25",
+          "amount": 150000000.0
+        },
+        {
+          "date": "2029-02-25",
+          "amount": 90000000.0
+        }
+      ],
+      "pay_leg": {
+        "kind": "FIXED",
+        "fixed_rate": 0.03
+      },
+      "receive_leg": {
+        "kind": "FLOAT",
+        "index": "SOFR_1M",
+        "margin": 0.0
+      }
+    }
+  ],
+  "options": {
+    "cleanup_call": {
+      "enabled": true,
+      "threshold_rule": "collateral.current_balance <= 0.1 * collateral.original_balance"
+    }
+  },
+  "reporting": {
+    "outputs": {
+      "tranche_cashflows": true
+    }
+  }
+}

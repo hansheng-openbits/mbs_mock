@@ -1,0 +1,199 @@
+{
+  "data": {
+    "credit_distribution": {
+      "fico_660_699": {
+        "balance_pct": 10.2,
+        "count_pct": 12.4
+      },
+      "fico_700_739": {
+        "balance_pct": 25.3,
+        "count_pct": 27.1
+      },
+      "fico_740_plus": {
+        "balance_pct": 62.5,
+        "count_pct": 58.2
+      },
+      "fico_below_660": {
+        "balance_pct": 2.0,
+        "count_pct": 2.3
+      }
+    },
+    "current_balance": 500000000.0,
+    "cutoff_date": "2024-01-01",
+    "documentation_type": {
+      "Alternative Documentation": {
+        "balance_pct": 15.0,
+        "count_pct": 17.5
+      },
+      "Full Documentation": {
+        "balance_pct": 85.0,
+        "count_pct": 82.5
+      }
+    },
+    "geographic_distribution": {
+      "AZ": {
+        "avg_fico": 740,
+        "avg_ltv": 76.5,
+        "balance_pct": 3.5,
+        "count_pct": 4.0
+      },
+      "CA": {
+        "avg_fico": 752,
+        "avg_ltv": 71.2,
+        "balance_pct": 28.5,
+        "count_pct": 25.2
+      },
+      "CO": {
+        "avg_fico": 751,
+        "avg_ltv": 72.0,
+        "balance_pct": 3.8,
+        "count_pct": 4.1
+      },
+      "FL": {
+        "avg_fico": 738,
+        "avg_ltv": 75.2,
+        "balance_pct": 12.8,
+        "count_pct": 14.1
+      },
+      "GA": {
+        "avg_fico": 735,
+        "avg_ltv": 77.0,
+        "balance_pct": 3.2,
+        "count_pct": 3.5
+      },
+      "IL": {
+        "avg_fico": 742,
+        "avg_ltv": 74.0,
+        "balance_pct": 5.1,
+        "count_pct": 5.5
+      },
+      "NY": {
+        "avg_fico": 755,
+        "avg_ltv": 68.5,
+        "balance_pct": 8.4,
+        "count_pct": 7.2
+      },
+      "Other": {
+        "avg_fico": 745,
+        "avg_ltv": 73.8,
+        "balance_pct": 15.3,
+        "count_pct": 15.8
+      },
+      "TX": {
+        "avg_fico": 745,
+        "avg_ltv": 73.5,
+        "balance_pct": 15.2,
+        "count_pct": 16.8
+      },
+      "WA": {
+        "avg_fico": 758,
+        "avg_ltv": 70.5,
+        "balance_pct": 4.2,
+        "count_pct": 3.8
+      }
+    },
+    "loan_count": 1847,
+    "loan_purpose_distribution": {
+      "Cash-Out Refinance": {
+        "balance_pct": 12.5,
+        "count_pct": 13.5
+      },
+      "Purchase": {
+        "balance_pct": 55.0,
+        "count_pct": 52.3
+      },
+      "Rate/Term Refinance": {
+        "balance_pct": 32.5,
+        "count_pct": 34.2
+      }
+    },
+    "ltv_distribution": {
+      "ltv_60_or_less": {
+        "balance_pct": 22.5,
+        "count_pct": 20.1
+      },
+      "ltv_61_70": {
+        "balance_pct": 28.3,
+        "count_pct": 27.5
+      },
+      "ltv_71_80": {
+        "balance_pct": 38.7,
+        "count_pct": 40.2
+      },
+      "ltv_81_90": {
+        "balance_pct": 8.5,
+        "count_pct": 10.0
+      },
+      "ltv_91_plus": {
+        "balance_pct": 2.0,
+        "count_pct": 2.2
+      }
+    },
+    "model_parameters": {
+      "base_cdr": 0.005,
+      "base_cpr": 0.08,
+      "base_severity": 0.32,
+      "default_model": "cox_default",
+      "prepay_model": "cox_prepayment",
+      "severity_model": "dynamic"
+    },
+    "occupancy_distribution": {
+      "Investment Property": {
+        "balance_pct": 2.5,
+        "count_pct": 2.7
+      },
+      "Primary Residence": {
+        "balance_pct": 92.5,
+        "count_pct": 91.8
+      },
+      "Second Home": {
+        "balance_pct": 5.0,
+        "count_pct": 5.5
+      }
+    },
+    "original_balance": 500000000.0,
+    "pool_id": "PRIME_2024_1",
+    "property_type_distribution": {
+      "2-4 Unit": {
+        "balance_pct": 3.0,
+        "count_pct": 3.2
+      },
+      "Condo": {
+        "balance_pct": 12.3,
+        "count_pct": 14.5
+      },
+      "PUD": {
+        "balance_pct": 6.2,
+        "count_pct": 7.1
+      },
+      "Single Family Detached": {
+        "balance_pct": 78.5,
+        "count_pct": 75.2
+      }
+    },
+    "rate_type_distribution": {
+      "15-Year Fixed": {
+        "balance_pct": 8.5,
+        "count_pct": 10.5
+      },
+      "30-Year Fixed": {
+        "balance_pct": 88.5,
+        "count_pct": 86.2
+      },
+      "ARM": {
+        "balance_pct": 3.0,
+        "count_pct": 3.3
+      }
+    },
+    "summary_statistics": {
+      "avg_dti": 34.2,
+      "avg_fico": 748,
+      "avg_loan_size": 270709,
+      "avg_ltv": 72.5,
+      "wac": 0.0675,
+      "wala": 6,
+      "wam": 354
+    }
+  },
+  "deal_id": "PRIME_2024_1"
+}

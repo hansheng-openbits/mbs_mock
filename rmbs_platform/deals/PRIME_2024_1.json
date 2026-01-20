@@ -1,0 +1,284 @@
+{
+  "meta": {
+    "deal_id": "PRIME_2024_1",
+    "deal_name": "Prime Residential Trust 2024-1",
+    "asset_type": "PRIME_RMBS",
+    "issuer": "ABC Mortgage Capital",
+    "version": "1.0",
+    "description": "Senior/subordinate structure backed by prime first-lien residential mortgages"
+  },
+  "dates": {
+    "cutoff_date": "2024-01-01",
+    "closing_date": "2024-01-25",
+    "first_payment_date": "2024-02-25",
+    "maturity_date": "2054-02-25",
+    "payment_frequency": "MONTHLY",
+    "day_count": "30_360",
+    "record_date_offset": -1,
+    "settlement_delay": 1
+  },
+  "funds": [
+    {
+      "id": "IAF",
+      "description": "Interest Available Funds",
+      "initial_balance": 0
+    },
+    {
+      "id": "PAF",
+      "description": "Principal Available Funds",
+      "initial_balance": 0
+    },
+    {
+      "id": "RAF",
+      "description": "Recovery Available Funds",
+      "initial_balance": 0
+    }
+  ],
+  "accounts": [
+    {
+      "id": "RESERVE",
+      "type": "RESERVE",
+      "target_rule": "2500000.0",
+      "initial_balance": 2500000.0
+    },
+    {
+      "id": "EXPENSE",
+      "type": "EXPENSE",
+      "target_rule": "0",
+      "initial_balance": 0
+    }
+  ],
+  "variables": {
+    "ServicingFeeRate": "0.0025 / 12",
+    "TrusteeFeeRate": "0.0002 / 12",
+    "ServicingFee": "collateral.current_balance * ServicingFeeRate",
+    "TrusteeFee": "collateral.current_balance * TrusteeFeeRate",
+    "SeniorExpenses": "ServicingFee + TrusteeFee",
+    "ClassA_IntDue": "bonds.ClassA.balance * 0.0450 / 12",
+    "ClassM1_IntDue": "bonds.ClassM1.balance * 0.0550 / 12",
+    "ClassM2_IntDue": "bonds.ClassM2.balance * 0.0650 / 12",
+    "ClassB_IntDue": "bonds.ClassB.balance * 0.0850 / 12",
+    "ReserveTarget": "2500000.0",
+    "ReserveShortfall": "MAX(0, ReserveTarget - accounts.RESERVE)",
+    "TotalBondBalance": "bonds.ClassA.balance + bonds.ClassM1.balance + bonds.ClassM2.balance + bonds.ClassB.balance",
+    "OC_Ratio": "collateral.current_balance / TotalBondBalance",
+    "DelinquencyRate": "variables.Delinq60Plus",
+    "OCTriggerFailed": "tests.OC_Test.failed",
+    "DelinqTriggerFailed": "tests.Delinq_Test.failed"
+  },
+  "tests": [
+    {
+      "id": "OC_Test",
+      "kind": "OC",
+      "calc": {
+        "value_rule": "collateral.current_balance / (bonds.ClassA.balance + bonds.ClassM1.balance)",
+        "numerator_rule": "collateral.current_balance",
+        "denominator_rule": "bonds.ClassA.balance + bonds.ClassM1.balance"
+      },
+      "threshold": {
+        "rule": "1.15"
+      },
+      "pass_if": "VALUE_GE_THRESHOLD",
+      "cure_periods": 3,
+      "effects": [
+        {
+          "set_flag": "OC_Trigger_Active"
+        }
+      ]
+    },
+    {
+      "id": "Delinq_Test",
+      "kind": "DELINQ",
+      "calc": {
+        "value_rule": "variables.Delinq60Plus",
+        "numerator_rule": "variables.Delinq60PlusBalance",
+        "denominator_rule": "collateral.current_balance"
+      },
+      "threshold": {
+        "rule": "0.025"
+      },
+      "pass_if": "VALUE_LT_THRESHOLD",
+      "cure_periods": 3,
+      "effects": [
+        {
+          "set_flag": "Delinq_Trigger_Active"
+        }
+      ]
+    }
+  ],
+  "bonds": [
+    {
+      "id": "ClassA",
+      "type": "NOTE",
+      "original_balance": 425000000.0,
+      "rating": "AAA",
+      "priority": {
+        "interest": 1,
+        "principal": 1
+      },
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.045
+      },
+      "credit_enhancement": "15.0%",
+      "cusip": "00ABC12A1"
+    },
+    {
+      "id": "ClassM1",
+      "type": "NOTE",
+      "original_balance": 37500000.0,
+      "rating": "AA",
+      "priority": {
+        "interest": 2,
+        "principal": 2
+      },
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.055
+      },
+      "credit_enhancement": "7.5%",
+      "cusip": "00ABC12M1"
+    },
+    {
+      "id": "ClassM2",
+      "type": "NOTE",
+      "original_balance": 25000000.0,
+      "rating": "A",
+      "priority": {
+        "interest": 3,
+        "principal": 3
+      },
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.065
+      },
+      "credit_enhancement": "2.5%",
+      "cusip": "00ABC12M2"
+    },
+    {
+      "id": "ClassB",
+      "type": "NOTE",
+      "original_balance": 12500000.0,
+      "rating": "BBB",
+      "priority": {
+        "interest": 4,
+        "principal": 4
+      },
+      "coupon": {
+        "kind": "FIXED",
+        "fixed_rate": 0.085
+      },
+      "credit_enhancement": "0.0%",
+      "cusip": "00ABC12B1"
+    }
+  ],
+  "waterfalls": {
+    "interest": {
+      "steps": [
+        {
+          "id": "1",
+          "action": "PAY_FEE",
+          "from_fund": "IAF",
+          "amount_rule": "ServicingFee",
+          "payee": "ABC Servicing LLC"
+        },
+        {
+          "id": "2",
+          "action": "PAY_FEE",
+          "from_fund": "IAF",
+          "amount_rule": "TrusteeFee",
+          "payee": "Wells Fargo Trust"
+        },
+        {
+          "id": "3",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassA",
+          "amount_rule": "ClassA_IntDue"
+        },
+        {
+          "id": "4",
+          "action": "TRANSFER_FUND",
+          "from_fund": "IAF",
+          "to": "RESERVE",
+          "amount_rule": "MIN(funds.IAF, ReserveShortfall)"
+        },
+        {
+          "id": "5",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassM1",
+          "amount_rule": "ClassM1_IntDue"
+        },
+        {
+          "id": "6",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassM2",
+          "amount_rule": "ClassM2_IntDue",
+          "condition": "DelinqTriggerFailed == False"
+        },
+        {
+          "id": "7",
+          "action": "PAY_BOND_INTEREST",
+          "from_fund": "IAF",
+          "group": "ClassB",
+          "amount_rule": "ClassB_IntDue",
+          "condition": "DelinqTriggerFailed == False AND OCTriggerFailed == False"
+        }
+      ]
+    },
+    "principal": {
+      "steps": [
+        {
+          "id": "1",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassA",
+          "amount_rule": "ALL"
+        },
+        {
+          "id": "2",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassM1",
+          "amount_rule": "ALL"
+        },
+        {
+          "id": "3",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassM2",
+          "amount_rule": "ALL"
+        },
+        {
+          "id": "4",
+          "action": "PAY_BOND_PRINCIPAL",
+          "from_fund": "PAF",
+          "group": "ClassB",
+          "amount_rule": "ALL"
+        }
+      ]
+    },
+    "loss_allocation": {
+      "loss_source_rule": "variables.RealizedLoss",
+      "write_down_order": [
+        "ClassB",
+        "ClassM2",
+        "ClassM1",
+        "ClassA"
+      ]
+    }
+  },
+  "options": {
+    "cleanup_call": {
+      "enabled": true,
+      "threshold_rule": "collateral.current_balance <= 0.10 * 500000000",
+      "trigger_party": "Depositor",
+      "notice_period_days": 30
+    },
+    "optional_redemption": {
+      "enabled": false
+    }
+  }
+}

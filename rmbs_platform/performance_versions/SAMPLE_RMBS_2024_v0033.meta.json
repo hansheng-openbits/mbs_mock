@@ -1,0 +1,10 @@
+{
+  "deal_id": "SAMPLE_RMBS_2024",
+  "version": 33,
+  "created_at": "2026-01-19T03:44:17.210210+00:00",
+  "created_by": "unknown",
+  "source_name": "servicer_201704.csv",
+  "content_hash": "e7bf56daeac3351e9276080511001da75feaba886efcce3ca48007c237721b62",
+  "path": "/media/hansheng/cc7df9bc-e728-4b8d-a215-b64f31876acc/cdo-tee-mock/RMBS_deal/rmbs_platform/performance_versions/SAMPLE_RMBS_2024_v0033.csv",
+  "rows": 500
+}

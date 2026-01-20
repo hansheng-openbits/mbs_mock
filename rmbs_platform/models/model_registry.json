@@ -1,5 +1,5 @@
 {
-  "prepay": {
+  "prepay_rsf": {
     "model_type": "rsf",
     "path": "models/rsf_prepayment_model.pkl",
     "features": [
@@ -11,7 +11,7 @@
       "ORIGINAL_INTEREST_RATE"
     ]
   },
-  "default": {
+  "default_cox": {
     "model_type": "cox",
     "path": "models/cox_default_model.pkl",
     "features": [

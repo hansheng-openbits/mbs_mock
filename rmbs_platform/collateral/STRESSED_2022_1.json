@@ -1,0 +1,85 @@
+{
+  "pool_id": "STRESSED_2022_1",
+  "cutoff_date": "2022-03-01",
+  "original_balance": 250000000.0,
+  "current_balance": 145000000.0,
+  "loan_count": 1250,
+  "current_loan_count": 892,
+  "summary_statistics": {
+    "wac": 0.0825,
+    "wam": 312,
+    "wala": 34,
+    "avg_loan_size": 162556,
+    "avg_fico": 665,
+    "avg_ltv": 88.5,
+    "avg_dti": 46.5
+  },
+  "credit_distribution": {
+    "fico_740_plus": {"balance_pct": 8.5, "count_pct": 7.2},
+    "fico_700_739": {"balance_pct": 18.5, "count_pct": 16.8},
+    "fico_660_699": {"balance_pct": 35.0, "count_pct": 38.2},
+    "fico_620_659": {"balance_pct": 28.0, "count_pct": 28.5},
+    "fico_below_620": {"balance_pct": 10.0, "count_pct": 9.3}
+  },
+  "ltv_distribution": {
+    "ltv_60_or_less": {"balance_pct": 5.0, "count_pct": 4.2},
+    "ltv_61_70": {"balance_pct": 10.5, "count_pct": 9.8},
+    "ltv_71_80": {"balance_pct": 22.5, "count_pct": 24.0},
+    "ltv_81_90": {"balance_pct": 38.0, "count_pct": 40.5},
+    "ltv_91_100": {"balance_pct": 18.0, "count_pct": 16.5},
+    "ltv_above_100": {"balance_pct": 6.0, "count_pct": 5.0}
+  },
+  "geographic_distribution": {
+    "FL": {"balance_pct": 32.5, "count_pct": 35.2, "avg_fico": 658, "avg_ltv": 92.5},
+    "CA": {"balance_pct": 22.0, "count_pct": 18.5, "avg_fico": 678, "avg_ltv": 85.0},
+    "AZ": {"balance_pct": 12.5, "count_pct": 14.0, "avg_fico": 652, "avg_ltv": 95.0},
+    "NV": {"balance_pct": 8.5, "count_pct": 9.5, "avg_fico": 648, "avg_ltv": 98.0},
+    "TX": {"balance_pct": 7.5, "count_pct": 8.0, "avg_fico": 665, "avg_ltv": 88.0},
+    "Other": {"balance_pct": 17.0, "count_pct": 14.8, "avg_fico": 670, "avg_ltv": 85.5}
+  },
+  "delinquency_status": {
+    "current": {"balance_pct": 72.5, "count_pct": 70.2},
+    "30_days": {"balance_pct": 8.5, "count_pct": 9.0},
+    "60_days": {"balance_pct": 6.0, "count_pct": 6.8},
+    "90_plus_days": {"balance_pct": 7.5, "count_pct": 8.0},
+    "foreclosure": {"balance_pct": 3.5, "count_pct": 4.0},
+    "reo": {"balance_pct": 2.0, "count_pct": 2.0}
+  },
+  "property_type_distribution": {
+    "Single Family Detached": {"balance_pct": 58.0, "count_pct": 55.5},
+    "Condo": {"balance_pct": 22.0, "count_pct": 24.5},
+    "Townhouse": {"balance_pct": 12.0, "count_pct": 12.5},
+    "2-4 Unit": {"balance_pct": 8.0, "count_pct": 7.5}
+  },
+  "occupancy_distribution": {
+    "Primary Residence": {"balance_pct": 75.0, "count_pct": 72.5},
+    "Investment Property": {"balance_pct": 18.0, "count_pct": 20.5},
+    "Second Home": {"balance_pct": 7.0, "count_pct": 7.0}
+  },
+  "loan_purpose_distribution": {
+    "Purchase": {"balance_pct": 35.0, "count_pct": 32.5},
+    "Cash-Out Refinance": {"balance_pct": 48.0, "count_pct": 50.5},
+    "Rate/Term Refinance": {"balance_pct": 17.0, "count_pct": 17.0}
+  },
+  "modification_status": {
+    "modified": {"balance_pct": 18.5, "count_pct": 16.2},
+    "trial_modification": {"balance_pct": 4.5, "count_pct": 5.0},
+    "never_modified": {"balance_pct": 77.0, "count_pct": 78.8}
+  },
+  "historical_performance": {
+    "cumulative_prepayments_pct": 17.0,
+    "cumulative_defaults_pct": 14.0,
+    "cumulative_loss_pct": 8.5,
+    "cumulative_recovery_pct": 5.5,
+    "peak_delinquency_pct": 22.5,
+    "peak_delinquency_date": "2023-09-25"
+  },
+  "model_parameters": {
+    "prepay_model": "cox_prepayment",
+    "default_model": "cox_default",
+    "severity_model": "dynamic",
+    "base_cpr": 0.04,
+    "base_cdr": 0.035,
+    "base_severity": 0.55
+  }
+}

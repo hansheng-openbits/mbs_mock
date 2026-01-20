@@ -1,0 +1,32 @@
+{
+  "scenario_id": "HIGH_PREPAY_2024",
+  "name": "High Prepayment Speed Scenario",
+  "description": "Elevated prepayment scenario for WAL sensitivity analysis",
+  "created_by": "Trading Desk",
+  "created_date": "2024-01-15",
+  "status": "approved",
+  "scenario_type": "sensitivity",
+  "parameters": {
+    "cpr": 0.25,
+    "cdr": 0.005,
+    "severity": 0.30,
+    "horizon_periods": 60,
+    "rate_scenario": "rally",
+    "start_rate": 0.035,
+    "rate_sensitivity": 2.0,
+    "use_ml_models": true,
+    "ml_feature_source": "simulated"
+  },
+  "economic_assumptions": {
+    "gdp_growth": 0.03,
+    "unemployment_rate": 0.035,
+    "hpi_growth": 0.06,
+    "mortgage_rate_10yr_avg": 0.045
+  },
+  "prepay_breakdown": {
+    "refinance": 0.70,
+    "turnover": 0.20,
+    "curtailment": 0.10
+  },
+  "notes": "High prepay scenario for extension risk analysis. Assumes sustained low rate environment with strong refinance incentive. Useful for analyzing early payoff scenarios for premium bonds."
+}

@@ -1,0 +1,27 @@
+{
+  "scenario_id": "BASE_CASE_2024",
+  "name": "Base Case Projection",
+  "description": "Baseline economic scenario with stable housing market and moderate prepayments",
+  "created_by": "System",
+  "created_date": "2024-01-15",
+  "status": "approved",
+  "scenario_type": "baseline",
+  "parameters": {
+    "cpr": 0.08,
+    "cdr": 0.008,
+    "severity": 0.32,
+    "horizon_periods": 60,
+    "rate_scenario": "base",
+    "start_rate": 0.045,
+    "rate_sensitivity": 1.0,
+    "use_ml_models": true,
+    "ml_feature_source": "simulated"
+  },
+  "economic_assumptions": {
+    "gdp_growth": 0.025,
+    "unemployment_rate": 0.038,
+    "hpi_growth": 0.035,
+    "mortgage_rate_10yr_avg": 0.065
+  },
+  "notes": "Base case assumes continuation of current economic conditions with gradual normalization of prepayment speeds as rates stabilize."
+}

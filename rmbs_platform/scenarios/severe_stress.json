@@ -1,0 +1,45 @@
+{
+  "scenario_id": "SEVERE_STRESS_2024",
+  "name": "Severe Stress / CCAR Severely Adverse",
+  "description": "Severe economic stress scenario aligned with Federal Reserve CCAR severely adverse parameters",
+  "created_by": "Risk Management",
+  "created_date": "2024-01-15",
+  "status": "approved",
+  "scenario_type": "severely_adverse",
+  "parameters": {
+    "cpr": 0.03,
+    "cdr": 0.06,
+    "severity": 0.50,
+    "horizon_periods": 60,
+    "rate_scenario": "volatile",
+    "start_rate": 0.045,
+    "rate_sensitivity": 0.5,
+    "use_ml_models": true,
+    "ml_feature_source": "simulated"
+  },
+  "economic_assumptions": {
+    "gdp_growth": -0.065,
+    "unemployment_rate": 0.10,
+    "hpi_growth": -0.25,
+    "mortgage_rate_10yr_avg": 0.055,
+    "recession_duration_quarters": 8,
+    "peak_unemployment_quarter": 10,
+    "vix_peak": 65
+  },
+  "trigger_impacts": {
+    "delinquency_increase": 4.0,
+    "severity_increase": 0.15,
+    "prepay_reduction": 0.6
+  },
+  "quarterly_factors": {
+    "Q1": {"unemployment": 0.055, "hpi_change": -0.02, "cdr_mult": 1.5},
+    "Q2": {"unemployment": 0.070, "hpi_change": -0.05, "cdr_mult": 2.5},
+    "Q3": {"unemployment": 0.085, "hpi_change": -0.08, "cdr_mult": 3.5},
+    "Q4": {"unemployment": 0.095, "hpi_change": -0.08, "cdr_mult": 4.0},
+    "Q5": {"unemployment": 0.100, "hpi_change": -0.05, "cdr_mult": 4.0},
+    "Q6": {"unemployment": 0.098, "hpi_change": -0.03, "cdr_mult": 3.5},
+    "Q7": {"unemployment": 0.092, "hpi_change": -0.01, "cdr_mult": 3.0},
+    "Q8": {"unemployment": 0.085, "hpi_change": 0.01, "cdr_mult": 2.5}
+  },
+  "notes": "Severe stress scenario modeled on 2008-2009 financial crisis. Assumes 10% peak unemployment, 25% cumulative HPI decline, and significantly elevated defaults. Tests capital adequacy under extreme conditions."
+}

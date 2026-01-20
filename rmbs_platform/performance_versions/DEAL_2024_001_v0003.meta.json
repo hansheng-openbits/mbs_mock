@@ -1,0 +1,10 @@
+{
+  "deal_id": "DEAL_2024_001",
+  "version": 3,
+  "created_at": "2026-01-20T03:49:58.276563+00:00",
+  "created_by": "unknown",
+  "source_name": "FREDDIE_SAMPLE_2017_2020.csv",
+  "content_hash": "dc91244295756382ea6fa3affe2d5176c936332a3859fcd996a5480fc19f326a",
+  "path": "/media/hansheng/cc7df9bc-e728-4b8d-a215-b64f31876acc/cdo-tee-mock/RMBS_deal/rmbs_platform/performance_versions/DEAL_2024_001_v0003.csv",
+  "rows": 3000
+}

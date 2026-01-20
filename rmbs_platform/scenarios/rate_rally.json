@@ -1,0 +1,33 @@
+{
+  "scenario_id": "RATE_RALLY_2024",
+  "name": "Interest Rate Rally Scenario",
+  "description": "Scenario where rates decline 150bps over 12 months, accelerating prepayments",
+  "created_by": "Investor Analytics",
+  "created_date": "2024-01-15",
+  "status": "approved",
+  "scenario_type": "custom",
+  "parameters": {
+    "cpr": 0.18,
+    "cdr": 0.006,
+    "severity": 0.30,
+    "horizon_periods": 60,
+    "rate_scenario": "rally",
+    "start_rate": 0.045,
+    "rate_sensitivity": 1.5,
+    "use_ml_models": true,
+    "ml_feature_source": "simulated"
+  },
+  "economic_assumptions": {
+    "gdp_growth": 0.015,
+    "unemployment_rate": 0.045,
+    "hpi_growth": 0.02,
+    "mortgage_rate_10yr_avg": 0.050,
+    "rate_path": {
+      "month_6": -0.0075,
+      "month_12": -0.015,
+      "month_24": -0.0125,
+      "month_36": -0.010
+    }
+  },
+  "notes": "Rate rally scenario assumes Fed easing cycle leading to sustained lower mortgage rates. High refinance incentive drives elevated prepayments, particularly for higher-rate loans."
+}

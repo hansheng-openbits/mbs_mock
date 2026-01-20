@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-01-19T00:02:06.327543+00:00",
+  "created_by": "unit-test",
+  "description": "Baseline scenario for testing",
+  "name": "Base Case",
+  "params": {
+    "cdr": 0.02,
+    "cpr": 0.1,
+    "deal_id": "DEAL_1",
+    "severity": 0.4
+  },
+  "scenario_id": "0b147f0c-3d26-4891-92d6-dad1de85080e",
+  "status": "draft",
+  "tags": [
+    "investor"
+  ]
+}

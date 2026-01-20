@@ -1,0 +1,176 @@
+{
+  "meta": {
+    "deal_id": "STRESSED_2022_1",
+    "deal_name": "Legacy Residential Trust 2022-1",
+    "asset_type": "SUBPRIME_RMBS",
+    "issuer": "Legacy Mortgage Securities",
+    "version": "1.0",
+    "description": "Seasoned subprime deal with active triggers - demonstrates workout scenarios"
+  },
+  "dates": {
+    "cutoff_date": "2022-03-01",
+    "closing_date": "2022-03-30",
+    "first_payment_date": "2022-04-25",
+    "maturity_date": "2052-04-25",
+    "payment_frequency": "MONTHLY",
+    "day_count": "30_360"
+  },
+  "collateral": {
+    "original_balance": 250000000.0,
+    "current_balance": 145000000.0,
+    "wac": 0.0825,
+    "wam": 312,
+    "avg_fico": 665,
+    "avg_ltv": 88.5,
+    "loan_count": 1250,
+    "geographic_concentration": {
+      "FL": 32.5,
+      "CA": 22.0,
+      "AZ": 12.5,
+      "NV": 8.5,
+      "TX": 7.5,
+      "Other": 17.0
+    },
+    "delinquency_status": {
+      "current": 72.5,
+      "30_days": 8.5,
+      "60_days": 6.0,
+      "90_plus_days": 7.5,
+      "foreclosure": 3.5,
+      "reo": 2.0
+    }
+  },
+  "funds": [
+    {"id": "IAF", "description": "Interest Available Funds"},
+    {"id": "PAF", "description": "Principal Available Funds"}
+  ],
+  "accounts": [
+    {"id": "RESERVE", "type": "RESERVE", "target_rule": "1500000.0", "initial_balance": 850000.0}
+  ],
+  "variables": {
+    "ServicingFee": "collateral.current_balance * 0.0050 / 12",
+    "ClassA_IntDue": "bonds.ClassA.balance * 0.0525 / 12",
+    "ClassM_IntDue": "bonds.ClassM.balance * 0.0725 / 12",
+    "ClassB_IntDue": "bonds.ClassB.balance * 0.1050 / 12",
+    "Delinq60Plus": "0.155",
+    "DelinqTrigger": "tests.DelinqTest.failed",
+    "CumLossTrigger": "tests.CumLossTest.failed",
+    "CumulativeLossPct": "0.085"
+  },
+  "tests": [
+    {
+      "id": "DelinqTest",
+      "kind": "DELINQ",
+      "calc": {
+        "value_rule": "variables.Delinq60Plus",
+        "numerator_rule": "0",
+        "denominator_rule": "1"
+      },
+      "threshold": {"rule": "0.08"},
+      "pass_if": "VALUE_LT_THRESHOLD",
+      "cure_periods": 6,
+      "effects": [{"set_flag": "DelinqTriggerActive"}]
+    },
+    {
+      "id": "CumLossTest",
+      "kind": "CUMLOSS",
+      "calc": {
+        "value_rule": "variables.CumulativeLossPct",
+        "numerator_rule": "0",
+        "denominator_rule": "1"
+      },
+      "threshold": {"rule": "0.05"},
+      "pass_if": "VALUE_LT_THRESHOLD",
+      "effects": [{"set_flag": "CumLossTriggerActive"}]
+    }
+  ],
+  "trigger_status": {
+    "DelinqTest": {
+      "current_status": "FAILING",
+      "breach_date": "2023-06-25",
+      "consecutive_fails": 18
+    },
+    "CumLossTest": {
+      "current_status": "FAILING",
+      "breach_date": "2023-09-25",
+      "consecutive_fails": 15
+    }
+  },
+  "bonds": [
+    {
+      "id": "ClassA",
+      "type": "NOTE",
+      "original_balance": 212500000.0,
+      "current_balance": 125500000.0,
+      "rating": "BBB",
+      "original_rating": "AAA",
+      "priority": {"interest": 1, "principal": 1},
+      "coupon": {"kind": "FIXED", "fixed_rate": 0.0525},
+      "credit_enhancement": "15.0%",
+      "interest_shortfall": 0.0
+    },
+    {
+      "id": "ClassM",
+      "type": "NOTE",
+      "original_balance": 25000000.0,
+      "current_balance": 18500000.0,
+      "rating": "CCC",
+      "original_rating": "A",
+      "priority": {"interest": 2, "principal": 2},
+      "coupon": {"kind": "FIXED", "fixed_rate": 0.0725},
+      "credit_enhancement": "5.0%",
+      "interest_shortfall": 125000.0
+    },
+    {
+      "id": "ClassB",
+      "type": "NOTE",
+      "original_balance": 12500000.0,
+      "current_balance": 1000000.0,
+      "rating": "D",
+      "original_rating": "BBB",
+      "priority": {"interest": 3, "principal": 3},
+      "coupon": {"kind": "FIXED", "fixed_rate": 0.1050},
+      "credit_enhancement": "0.0%",
+      "interest_shortfall": 850000.0,
+      "cumulative_writedown": 11500000.0
+    }
+  ],
+  "waterfalls": {
+    "interest": {
+      "steps": [
+        {"id": "1", "action": "PAY_FEE", "from_fund": "IAF", "amount_rule": "ServicingFee"},
+        {"id": "2", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassA", "amount_rule": "ClassA_IntDue"},
+        {"id": "3", "action": "TRANSFER_FUND", "from_fund": "IAF", "to": "RESERVE", "amount_rule": "MIN(funds.IAF, MAX(0, 1500000 - accounts.RESERVE))"},
+        {"id": "4", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassM", "amount_rule": "ClassM_IntDue", "condition": "DelinqTrigger == False"},
+        {"id": "5", "action": "PAY_BOND_INTEREST", "from_fund": "IAF", "group": "ClassB", "amount_rule": "ClassB_IntDue", "condition": "DelinqTrigger == False AND CumLossTrigger == False"}
+      ]
+    },
+    "principal": {
+      "steps": [
+        {"id": "1", "action": "PAY_BOND_PRINCIPAL", "from_fund": "PAF", "group": "ClassA", "amount_rule": "ALL"},
+        {"id": "2", "action": "PAY_BOND_PRINCIPAL", "from_fund": "PAF", "group": "ClassM", "amount_rule": "ALL", "condition": "DelinqTrigger == False"},
+        {"id": "3", "action": "PAY_BOND_PRINCIPAL", "from_fund": "PAF", "group": "ClassB", "amount_rule": "ALL", "condition": "DelinqTrigger == False"}
+      ]
+    },
+    "loss_allocation": {
+      "loss_source_rule": "variables.RealizedLoss",
+      "write_down_order": ["ClassB", "ClassM", "ClassA"]
+    }
+  },
+  "historical_performance": {
+    "months_since_closing": 34,
+    "cumulative_prepayments": 42500000.0,
+    "cumulative_defaults": 35000000.0,
+    "cumulative_losses": 21250000.0,
+    "cumulative_recoveries": 13750000.0,
+    "lifetime_cpr": 0.062,
+    "lifetime_cdr": 0.048,
+    "lifetime_severity": 0.608
+  },
+  "options": {
+    "cleanup_call": {
+      "enabled": true,
+      "threshold_rule": "collateral.current_balance <= 0.10 * 250000000"
+    }
+  }
+}

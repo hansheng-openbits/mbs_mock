@@ -1,0 +1,76 @@
+# RMBS Platform Dependencies
+# ==========================
+# Production-ready dependency specification with pinned versions
+# for reproducibility and security.
+#
+# Install: pip install -r requirements.txt
+# Update:  pip install --upgrade -r requirements.txt
+#
+# Last updated: 2026-01-18
+
+# ============================================================================
+# Core Web Framework
+# ============================================================================
+fastapi>=0.104.0,<1.0.0          # High-performance async web framework
+uvicorn[standard]>=0.24.0,<1.0.0 # ASGI server with uvloop and httptools
+python-multipart>=0.0.6,<1.0.0   # Required for file upload handling
+starlette>=0.27.0,<1.0.0         # ASGI toolkit (FastAPI dependency)
+
+# ============================================================================
+# Data Validation & Configuration
+# ============================================================================
+pydantic>=2.5.0,<3.0.0           # Data validation using Python type hints
+pydantic-settings>=2.1.0,<3.0.0  # Settings management from env vars
+jsonschema>=4.20.0,<5.0.0        # JSON Schema validation for deal specs
+
+# ============================================================================
+# Data Processing & Analysis
+# ============================================================================
+pandas>=2.0.0,<3.0.0             # DataFrame operations for loan tapes
+numpy>=1.24.0,<2.0.0             # Numerical computing
+scipy>=1.11.0,<2.0.0             # Scientific computing (statistics, optimization)
+
+# ============================================================================
+# Machine Learning
+# ============================================================================
+scikit-learn>=1.3.0,<2.0.0       # ML utilities and preprocessing
+lifelines>=0.27.0,<1.0.0         # Survival analysis (CoxPH models)
+scikit-survival>=0.22.0,<1.0.0   # Random Survival Forest models
+joblib>=1.3.0,<2.0.0             # Model serialization/deserialization
+
+# ============================================================================
+# UI Framework
+# ============================================================================
+streamlit>=1.28.0,<2.0.0         # Interactive web UI
+altair>=5.0.0,<6.0.0             # Declarative visualization (Streamlit dep)
+
+# ============================================================================
+# HTTP Client
+# ============================================================================
+requests>=2.31.0,<3.0.0          # HTTP client for UI-to-API communication
+httpx>=0.25.0,<1.0.0             # Async HTTP client for testing
+
+# ============================================================================
+# Testing
+# ============================================================================
+pytest>=7.4.0,<9.0.0             # Test framework
+pytest-asyncio>=0.21.0,<1.0.0    # Async test support
+pytest-cov>=4.1.0,<5.0.0         # Coverage reporting
+hypothesis>=6.88.0,<7.0.0        # Property-based testing
+
+# ============================================================================
+# Development Tools (Optional)
+# ============================================================================
+# Uncomment for development environments:
+# black>=23.0.0                  # Code formatting
+# isort>=5.12.0                  # Import sorting
+# mypy>=1.5.0                    # Static type checking
+# ruff>=0.1.0                    # Fast Python linter
+
+# ============================================================================
+# Production Monitoring (Optional)
+# ============================================================================
+# Uncomment for production deployments:
+# prometheus-client>=0.17.0      # Prometheus metrics
+# structlog>=23.2.0              # Structured logging
+# sentry-sdk>=1.32.0             # Error tracking
