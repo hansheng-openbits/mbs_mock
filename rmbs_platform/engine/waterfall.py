@@ -7,27 +7,40 @@ cashflows to bond tranches according to deal rules. The waterfall is the
 heart of RMBS deal mechanics, determining how interest and principal are
 distributed.
 
-The :class:`WaterfallRunner` executes three phases each period:
+Industry Gap Fixed: Iterative Solver for Circular Dependencies
+-------------------------------------------------------------
+Real RMBS deals have circular dependencies that a simple top-to-bottom
+waterfall cannot handle:
 
-1. **Tests**: Evaluate trigger conditions (delinquency, OC tests).
-2. **Variables**: Calculate derived values used by waterfall steps.
-3. **Waterfalls**: Execute interest, principal, and loss allocation.
+- **Net WAC Cap**: Bond coupon cannot exceed available interest.
+  - Formula: Available Interest = Collections - Fees
+  - Problem: Some fees are calculated based on Bond Balance.
+  - Circularity: Bond Balance → Principal Payment → Interest Payment
+    → Net WAC Cap → Fees → Bond Balance
 
-A typical RMBS waterfall flows:
+- **Fee Circularity**: Trustee fees based on bond balance, but bond
+  balance depends on principal payment, which depends on available
+  funds after fees.
 
-1. Interest waterfall: Fees → Senior interest → Subordinate interest
-2. Principal waterfall: Senior principal → Subordinate principal
-3. Loss allocation: Write down subordinate tranches
+The :class:`WaterfallRunner` now includes an **iterative solver** that:
+1. Runs the waterfall multiple times until values converge.
+2. Handles Net WAC cap calculations.
+3. Resolves fee circular dependencies.
+
+Configuration
+-------------
+- ``max_iterations``: Maximum solver iterations (default: 10)
+- ``convergence_tolerance``: Balance difference threshold (default: $0.01)
 
 Example
 -------
 >>> from rmbs_platform.engine.waterfall import WaterfallRunner
 >>> from rmbs_platform.engine.compute import ExpressionEngine
 >>> engine = ExpressionEngine()
->>> runner = WaterfallRunner(engine)
+>>> runner = WaterfallRunner(engine, max_iterations=15, convergence_tol=0.001)
 >>> state.deposit_funds("IAF", 50000)
 >>> state.deposit_funds("PAF", 100000)
->>> runner.run_period(state)
+>>> runner.run_period(state)  # Automatically uses iterative solver if needed
 >>> print(f"Class A balance: ${state.bonds['A'].current_balance:,.0f}")
 
 See Also
@@ -38,13 +51,56 @@ state.DealState : Holds the state mutated by the waterfall.
 
 from __future__ import annotations
 
+import copy
 import logging
-from typing import Any, Dict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 from .compute import ExpressionEngine
 from .state import DealState
 
 logger = logging.getLogger("RMBS.Waterfall")
+
+
+@dataclass
+class IterationSnapshot:
+    """
+    Snapshot of deal state for convergence checking.
+    
+    Attributes
+    ----------
+    bond_balances : dict
+        Mapping of bond_id to current_balance.
+    cash_balances : dict
+        Mapping of fund_id to balance.
+    variables : dict
+        Copy of calculated variables.
+    """
+    bond_balances: Dict[str, float] = field(default_factory=dict)
+    cash_balances: Dict[str, float] = field(default_factory=dict)
+    variables: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SolverResult:
+    """
+    Result of iterative waterfall solver.
+    
+    Attributes
+    ----------
+    converged : bool
+        Whether the solver converged within max_iterations.
+    iterations : int
+        Number of iterations performed.
+    final_tolerance : float
+        Maximum balance difference in final iteration.
+    circular_dependencies : list
+        Detected circular dependencies (for diagnostics).
+    """
+    converged: bool = False
+    iterations: int = 0
+    final_tolerance: float = float("inf")
+    circular_dependencies: List[str] = field(default_factory=list)
 
 
 class WaterfallRunner:
@@ -55,25 +111,60 @@ class WaterfallRunner:
     It uses the ExpressionEngine to evaluate conditions and formulas,
     and mutates the DealState as cashflows are allocated.
 
+    **NEW: Iterative Solver Support**
+    
+    For deals with circular dependencies (Net WAC cap, fee circularity),
+    the runner can iterate until values converge. Enable with:
+    
+    - ``use_iterative_solver=True``: Force iterative mode
+    - ``max_iterations``: Maximum solver iterations
+    - ``convergence_tol``: Balance difference threshold for convergence
+
     Parameters
     ----------
     engine : ExpressionEngine
         Expression evaluator for waterfall rules and conditions.
+    max_iterations : int, default 10
+        Maximum iterations for circular dependency resolution.
+    convergence_tol : float, default 0.01
+        Maximum balance difference to consider converged ($).
+    use_iterative_solver : bool, default False
+        Force iterative solver even for simple waterfalls.
 
     Attributes
     ----------
     expr : ExpressionEngine
         Reference to the expression engine.
+    max_iterations : int
+        Solver iteration limit.
+    convergence_tol : float
+        Convergence threshold.
+    use_iterative_solver : bool
+        Whether to use iterative mode.
+    last_solver_result : SolverResult or None
+        Result from most recent iterative solve.
 
     Example
     -------
     >>> engine = ExpressionEngine()
+    >>> # Simple waterfall (sequential)
     >>> runner = WaterfallRunner(engine)
-    >>> # Process a period
     >>> runner.run_period(state)
+    
+    >>> # Complex waterfall with Net WAC cap (iterative)
+    >>> runner = WaterfallRunner(engine, use_iterative_solver=True, max_iterations=15)
+    >>> runner.run_period(state)
+    >>> if runner.last_solver_result and not runner.last_solver_result.converged:
+    ...     print("Warning: Waterfall did not converge!")
     """
 
-    def __init__(self, engine: ExpressionEngine) -> None:
+    def __init__(
+        self,
+        engine: ExpressionEngine,
+        max_iterations: int = 10,
+        convergence_tol: float = 0.01,
+        use_iterative_solver: bool = False,
+    ) -> None:
         """
         Initialize the waterfall runner with an expression engine.
 
@@ -81,8 +172,18 @@ class WaterfallRunner:
         ----------
         engine : ExpressionEngine
             Engine for evaluating waterfall rules.
+        max_iterations : int, default 10
+            Maximum iterations for circular dependency resolution.
+        convergence_tol : float, default 0.01
+            Maximum balance difference to consider converged.
+        use_iterative_solver : bool, default False
+            Force iterative solver mode.
         """
         self.expr = engine
+        self.max_iterations = max_iterations
+        self.convergence_tol = convergence_tol
+        self.use_iterative_solver = use_iterative_solver
+        self.last_solver_result: Optional[SolverResult] = None
 
     def evaluate_period(self, state: DealState) -> None:
         """
@@ -121,9 +222,13 @@ class WaterfallRunner:
 
         1. Run tests to set trigger flags.
         2. Calculate variables for waterfall conditions.
-        3. Execute interest waterfall.
+        3. Execute interest waterfall (with iterative solver if enabled).
         4. Execute principal waterfall.
         5. Allocate losses to subordinate tranches.
+
+        **Iterative Solver**: If ``use_iterative_solver=True`` or the deal
+        has Net WAC cap rules, the waterfall runs iteratively until bond
+        balances converge. This resolves circular dependencies.
 
         Parameters
         ----------
@@ -143,9 +248,27 @@ class WaterfallRunner:
         >>> runner.run_period(state)
         >>> # Cash has been paid to bonds
         >>> print(f"Remaining IAF: ${state.cash_balances['IAF']:,.2f}")
+        >>> # Check if solver converged (if iterative mode)
+        >>> if runner.last_solver_result:
+        ...     print(f"Converged: {runner.last_solver_result.converged}")
         """
         logger.info(f"--- Running Period {state.period_index + 1} ---")
 
+        # Check if deal has circular dependencies (Net WAC cap, etc.)
+        has_circular = self._detect_circular_dependencies(state)
+        use_solver = self.use_iterative_solver or has_circular
+
+        if use_solver:
+            self._run_period_iterative(state)
+        else:
+            self._run_period_sequential(state)
+
+    def _run_period_sequential(self, state: DealState) -> None:
+        """
+        Run period with simple top-to-bottom waterfall (no circularity).
+        
+        This is the original sequential waterfall logic.
+        """
         # STEP 1: Run Tests FIRST (So flags are ready for variables)
         self._run_tests(state)
 
@@ -161,6 +284,182 @@ class WaterfallRunner:
 
         # STEP 4: Allocate Losses
         self._allocate_losses(state)
+
+    def _run_period_iterative(self, state: DealState) -> None:
+        """
+        Run period with iterative solver for circular dependencies.
+        
+        This method handles:
+        - Net WAC cap calculations
+        - Fee circularity (fees based on bond balance)
+        - Any variable that depends on downstream values
+        
+        The solver iterates until bond balances converge within tolerance.
+        """
+        logger.info("Using iterative solver for circular dependencies")
+        
+        result = SolverResult()
+        prev_snapshot: Optional[IterationSnapshot] = None
+        
+        for iteration in range(self.max_iterations):
+            result.iterations = iteration + 1
+            
+            # Take snapshot before this iteration
+            current_snapshot = self._take_snapshot(state)
+            
+            # Run standard waterfall logic
+            self._run_tests(state)
+            self._calculate_variables(state)
+            
+            # Apply Net WAC cap if configured
+            self._apply_net_wac_cap(state)
+            
+            logger.info(f"Iteration {iteration + 1}: Executing Interest Waterfall")
+            self._execute_waterfall(state, "interest")
+            
+            logger.info(f"Iteration {iteration + 1}: Executing Principal Waterfall")
+            self._execute_waterfall(state, "principal")
+            
+            # Check convergence
+            if prev_snapshot is not None:
+                max_diff = self._calculate_max_difference(prev_snapshot, current_snapshot)
+                result.final_tolerance = max_diff
+                
+                if max_diff < self.convergence_tol:
+                    result.converged = True
+                    logger.info(f"Solver converged after {iteration + 1} iterations (diff: ${max_diff:.4f})")
+                    break
+            
+            prev_snapshot = current_snapshot
+        
+        if not result.converged:
+            logger.warning(f"Solver did not converge after {self.max_iterations} iterations (diff: ${result.final_tolerance:.4f})")
+        
+        # Allocate losses (after convergence)
+        self._allocate_losses(state)
+        
+        self.last_solver_result = result
+
+    def _detect_circular_dependencies(self, state: DealState) -> bool:
+        """
+        Detect if deal has circular dependencies requiring iterative solver.
+        
+        Checks for:
+        - Net WAC cap rules in bond definitions
+        - Fee rules that reference bond balances
+        - Variables that depend on waterfall outputs
+        """
+        # Check for Net WAC cap in bonds
+        for bond_id, bond in state.bonds.items():
+            if hasattr(bond, 'coupon_cap') and bond.coupon_cap:
+                return True
+            if hasattr(bond, 'net_wac_cap') and bond.net_wac_cap:
+                return True
+        
+        # Check for circular variable definitions
+        wf_interest = state.def_.waterfalls.get("interest", {})
+        wf_principal = state.def_.waterfalls.get("principal", {})
+        
+        for step in wf_interest.get("steps", []) + wf_principal.get("steps", []):
+            amount_rule = step.get("amount_rule", "")
+            # Check if rule references downstream values
+            if "bonds." in str(amount_rule) and "balance" in str(amount_rule).lower():
+                # Fee or payment depends on bond balance (potential circularity)
+                if step.get("action") == "PAY_FEE":
+                    return True
+        
+        # Check for explicit net_wac_cap in deal definition
+        if hasattr(state.def_, 'net_wac_cap') and state.def_.net_wac_cap:
+            return True
+        
+        return False
+
+    def _take_snapshot(self, state: DealState) -> IterationSnapshot:
+        """Create a snapshot of current state for convergence checking."""
+        return IterationSnapshot(
+            bond_balances={
+                bond_id: bond.current_balance
+                for bond_id, bond in state.bonds.items()
+            },
+            cash_balances=dict(state.cash_balances),
+            variables=dict(state.variables),
+        )
+
+    def _calculate_max_difference(
+        self,
+        prev: IterationSnapshot,
+        curr: IterationSnapshot,
+    ) -> float:
+        """Calculate maximum balance difference between snapshots."""
+        max_diff = 0.0
+        
+        # Check bond balances
+        for bond_id, prev_bal in prev.bond_balances.items():
+            curr_bal = curr.bond_balances.get(bond_id, 0.0)
+            diff = abs(curr_bal - prev_bal)
+            max_diff = max(max_diff, diff)
+        
+        # Check cash balances
+        for fund_id, prev_bal in prev.cash_balances.items():
+            curr_bal = curr.cash_balances.get(fund_id, 0.0)
+            diff = abs(curr_bal - prev_bal)
+            max_diff = max(max_diff, diff)
+        
+        return max_diff
+
+    def _apply_net_wac_cap(self, state: DealState) -> None:
+        """
+        Apply Net WAC cap to bond interest calculations.
+        
+        The Net WAC cap limits bond coupon to available interest:
+        
+            Effective Rate = min(Coupon, Available Interest / Bond Balance)
+        
+        Where:
+            Available Interest = Collections - Senior Fees
+        
+        This prevents bonds from being paid more interest than the
+        collateral actually generates.
+        """
+        # Get available interest (after fees)
+        available_interest = state.cash_balances.get("IAF", 0.0)
+        
+        # Check for explicit net_wac_cap configuration
+        net_wac_cap_config = state.def_.waterfalls.get("net_wac_cap", {})
+        if not net_wac_cap_config.get("enabled", False):
+            return
+        
+        # Calculate total bond balance
+        total_bond_balance = sum(
+            bond.current_balance for bond in state.bonds.values()
+        )
+        
+        if total_bond_balance <= 0:
+            return
+        
+        # Calculate implied max rate
+        if available_interest > 0:
+            implied_max_rate = (available_interest * 12) / total_bond_balance
+        else:
+            implied_max_rate = 0.0
+        
+        # Apply cap to each bond's effective rate
+        for bond_id, bond in state.bonds.items():
+            if hasattr(bond, 'coupon_rate') and bond.coupon_rate > implied_max_rate:
+                # Store original for diagnostics
+                if not hasattr(bond, '_original_coupon'):
+                    bond._original_coupon = bond.coupon_rate
+                
+                # Cap the effective rate
+                bond.effective_rate = min(bond.coupon_rate, implied_max_rate)
+                
+                # Log the cap application
+                cap_reduction = bond.coupon_rate - implied_max_rate
+                if cap_reduction > 0.0001:
+                    logger.info(
+                        f"Net WAC cap applied to {bond_id}: "
+                        f"{bond.coupon_rate:.4%} → {implied_max_rate:.4%}"
+                    )
 
     def _calculate_variables(self, state: DealState) -> None:
         """

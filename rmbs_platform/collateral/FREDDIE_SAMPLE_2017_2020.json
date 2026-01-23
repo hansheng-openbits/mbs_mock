@@ -1,4 +1,5 @@
 {
+  "deal_id": "FREDDIE_SAMPLE_2017_2020",
   "data": {
     "as_of_date": "201707",
     "current_balance": 112438000.0,
@@ -29,6 +30,5 @@
     "pool_type": "FIXED_RATE",
     "wac": 0.041708,
     "wam": 321
-  },
-  "deal_id": "FREDDIE_SAMPLE_2017_2020"
+  }
 }

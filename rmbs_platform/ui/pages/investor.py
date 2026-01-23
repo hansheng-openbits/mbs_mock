@@ -30,9 +30,16 @@ def _rerun() -> None:
         st.experimental_rerun()
 
 
-def render_simulation_controls(api_client: APIClient) -> Dict[str, Any]:
+def render_simulation_controls(api_client: APIClient, selected_deal_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Render simulation parameter controls with improved UX.
+
+    Parameters
+    ----------
+    api_client : APIClient
+        API client instance
+    selected_deal_id : str, optional
+        Currently selected deal ID for checking origination tape availability
 
     Returns
     -------
@@ -105,7 +112,26 @@ def render_simulation_controls(api_client: APIClient) -> Dict[str, Any]:
         )
 
         if use_ml:
-            st.info("ℹ️ ML models require origination tape to be configured in collateral data")
+            # Check if origination tape is configured for the selected deal
+            has_origination_tape = False
+
+            if selected_deal_id:
+                try:
+                    collateral_response = api_client.get_collateral(selected_deal_id)
+                    collateral_data = collateral_response.get("collateral", {})
+                    loan_data = collateral_data.get("loan_data", {})
+                    schema_ref = loan_data.get("schema_ref", {})
+                    ml_config = collateral_data.get("ml_config", {})
+
+                    source_uri = schema_ref.get("source_uri") or ml_config.get("origination_source_uri")
+                    has_origination_tape = bool(source_uri)
+                except:
+                    pass
+
+            if not has_origination_tape:
+                st.warning("⚠️ ML models require origination tape to be configured in collateral data. Please upload loan tape data in the Arranger screen.")
+            else:
+                st.success("✅ Origination tape configured for ML models")
 
             registry = api_client.get_model_registry()
             model_keys = sorted(list(registry.keys())) if registry else []
@@ -287,6 +313,10 @@ def render_deal_selector(api_client: APIClient) -> Optional[str]:
         )
 
         selected_deal_id = deal_id_map.get(selected_display)
+
+        # Store selected deal ID in session state for ML check
+        if selected_deal_id:
+            st.session_state["investor_selected_deal_id"] = selected_deal_id
 
     with col2:
         if st.button("🔄 Refresh", help="Refresh deal list"):
@@ -601,7 +631,7 @@ def render_investor_page(api_client: APIClient) -> None:
         return
 
     # Simulation Controls
-    sim_params = render_simulation_controls(api_client)
+    sim_params = render_simulation_controls(api_client, selected_deal)
 
     # Simulation Execution
     simulation_results = render_simulation_execution(api_client, selected_deal, sim_params)

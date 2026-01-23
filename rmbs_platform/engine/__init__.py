@@ -43,7 +43,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from .collateral import CollateralModel
+from .collateral import CollateralModel, LoanLevelCollateralModel
 from .compute import ExpressionEngine
 from .loader import DealLoader
 from .reporting import ReportGenerator
@@ -745,13 +745,46 @@ def run_simulation(
 
         # Fall back to rule-based model if ML not used
         if future_cfs is None:
-            future_cfs = model.generate_cashflows(
-                remaining,
-                cpr,
-                cdr,
-                severity,
-                start_balance=latest_end_balance,
-            )
+            # Check if loan tape is available for loan-level simulation
+            use_loan_level = False
+            loan_tape_path = None
+            
+            if source_uri:
+                from pathlib import Path as PathLib
+                base_dir = PathLib(__file__).resolve().parents[1]
+                potential_path = base_dir / source_uri
+                if potential_path.exists():
+                    loan_tape_path = str(potential_path)
+                    use_loan_level = True
+            
+            if use_loan_level and loan_tape_path:
+                # Use loan-level model (industry-grade, captures adverse selection)
+                try:
+                    loan_model = LoanLevelCollateralModel.from_csv(loan_tape_path)
+                    future_cfs = loan_model.generate_cashflows(
+                        periods=remaining,
+                        base_cpr=cpr,
+                        base_cdr=cdr,
+                        base_severity=severity,
+                    )
+                    state.set_variable("LoanLevelModel", True)
+                    state.set_variable("LoanCount", loan_model.get_loan_count())
+                    state.set_variable("InitialWAC", loan_model.wac_history[0] if loan_model.wac_history else 0)
+                except Exception as e:
+                    # Fall back to rep-line if loan-level fails
+                    logger.warning(f"Loan-level model failed, using rep-line: {e}")
+                    future_cfs = None
+            
+            # Final fallback to rep-line model
+            if future_cfs is None:
+                future_cfs = model.generate_cashflows(
+                    remaining,
+                    cpr,
+                    cdr,
+                    severity,
+                    start_balance=latest_end_balance,
+                )
+                state.set_variable("LoanLevelModel", False)
 
         # Process projected cashflows through waterfall
         for _, row in future_cfs.iterrows():

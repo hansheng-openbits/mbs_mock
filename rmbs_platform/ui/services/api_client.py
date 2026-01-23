@@ -81,6 +81,22 @@ class APIClient:
         except APIError:
             return []
 
+    def get_collateral(self, deal_id: str) -> Dict[str, Any]:
+        """
+        Retrieve collateral data for a deal.
+
+        Parameters
+        ----------
+        deal_id : str
+            Deal identifier
+
+        Returns
+        -------
+        dict
+            Collateral data
+        """
+        return self._make_request("GET", f"/collateral/{deal_id}")
+
     def get_scenarios(self, include_archived: bool = True) -> List[Dict[str, Any]]:
         """
         Retrieve scenario definitions.
@@ -250,6 +266,11 @@ class APIClient:
         """Upload collateral data."""
         payload = {"deal_id": deal_id, "collateral": collateral}
         return self._make_request("POST", "/collateral", json=payload)
+
+    def upload_loan_tape(self, deal_id: str, file_content: bytes, filename: str) -> Dict[str, Any]:
+        """Upload loan tape data."""
+        files = {"file": (filename, file_content, "text/csv")}
+        return self._make_request("POST", f"/loan-tape/{deal_id}", files=files)
 
     def upload_performance(self, deal_id: str, file_content: str, filename: str, created_by: str) -> Dict[str, Any]:
         """Upload performance data."""

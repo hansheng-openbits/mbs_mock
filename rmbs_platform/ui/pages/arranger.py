@@ -321,6 +321,116 @@ def render_collateral_upload_section(api_client: APIClient) -> None:
                 st.error(f"❌ Failed to read collateral JSON: {e}")
 
 
+def render_loan_tape_upload_section(api_client: APIClient) -> None:
+    """Render the origination loan tape upload section."""
+    st.subheader("📋 Origination Loan Tape")
+
+    # Get current deal ID from session or input
+    deal_id = st.session_state.get("arranger_deal_id", "")
+    if not deal_id:
+        deal_id = st.text_input(
+            "Deal ID for Loan Tape",
+            placeholder="Enter deal ID to associate loan tape with",
+            help="Must match an existing deal specification"
+        )
+
+    if deal_id:
+        st.caption(f"Loan tape will be uploaded for deal: **{deal_id}**")
+
+        uploaded_loan_tape = st.file_uploader(
+            "Upload origination loan tape CSV",
+            type=["csv"],
+            help="Upload loan-level origination data for ML models"
+        )
+
+        if uploaded_loan_tape is not None:
+            try:
+                # Read and validate CSV
+                import pandas as pd
+                loan_df = pd.read_csv(uploaded_loan_tape)
+
+                # Validate required columns for ML features
+                required_cols = ["LoanId", "OriginalBalance", "CurrentBalance",
+                               "NoteRate", "RemainingTermMonths", "FICO", "LTV"]
+                missing_cols = [col for col in required_cols if col not in loan_df.columns]
+
+                if missing_cols:
+                    st.warning(f"⚠️ Missing required columns: {', '.join(missing_cols)}")
+                    st.info("Required columns for ML models: LoanId, OriginalBalance, CurrentBalance, NoteRate, RemainingTermMonths, FICO, LTV")
+
+                    # Show optional but recommended columns
+                    recommended_cols = ["FIRST_PAYMENT_DATE", "ORIGINAL_INTEREST_RATE", "State", "PropertyType"]
+                    missing_recommended = [col for col in recommended_cols if col not in loan_df.columns]
+                    if missing_recommended:
+                        st.info(f"💡 Recommended for ML features: {', '.join(missing_recommended)}")
+                else:
+                    st.success("✅ Loan tape format validated")
+
+                    # Show summary statistics
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Loans", len(loan_df))
+                    with col2:
+                        st.metric("Avg Balance", f"${loan_df['CurrentBalance'].mean():,.0f}")
+                    with col3:
+                        st.metric("Avg FICO", f"{loan_df['FICO'].mean():.0f}")
+                    with col4:
+                        st.metric("Avg LTV", f"{loan_df['LTV'].mean():.1%}")
+
+                    # Upload button
+                    if st.button("📤 Upload Loan Tape", type="primary"):
+                        try:
+                            with loading_spinner("Uploading loan tape..."):
+                                result = api_client.upload_loan_tape(
+                                    deal_id,
+                                    uploaded_loan_tape.getvalue(),
+                                    uploaded_loan_tape.name
+                                )
+                                success_message(
+                                    f"Loan tape for '{deal_id}' uploaded successfully! 📋",
+                                    celebration=True
+                                )
+
+                                # Update collateral configuration to reference the loan tape
+                                _update_collateral_with_loan_tape(deal_id, api_client)
+
+                        except Exception as e:
+                            error_message(
+                                f"Failed to upload loan tape: {e}",
+                                details=str(e),
+                                show_retry=True
+                            )
+
+            except Exception as e:
+                st.error(f"❌ Failed to read CSV file: {e}")
+
+
+def _update_collateral_with_loan_tape(deal_id: str, api_client: APIClient) -> None:
+    """Update collateral configuration to reference the uploaded loan tape."""
+    try:
+        # Get current collateral
+        collateral_response = api_client.get_collateral(deal_id)
+        collateral_data = collateral_response.get("collateral", {})
+
+        # Ensure loan_data section exists
+        if "loan_data" not in collateral_data:
+            collateral_data["loan_data"] = {}
+
+        if "schema_ref" not in collateral_data["loan_data"]:
+            collateral_data["loan_data"]["schema_ref"] = {}
+
+        # Update the source_uri to point to the uploaded loan tape
+        loan_tape_path = f"datasets/{deal_id}/loan_tape.csv"
+        collateral_data["loan_data"]["schema_ref"]["source_uri"] = loan_tape_path
+
+        # Re-upload the updated collateral
+        api_client.upload_collateral(deal_id, collateral_data)
+        st.info("✅ Collateral configuration updated to reference the uploaded loan tape.")
+
+    except Exception as e:
+        st.info("ℹ️ Loan tape uploaded successfully. Upload collateral data to enable ML models.")
+
+
 def render_deal_management_section(api_client: APIClient) -> None:
     """Render the deal management and viewing section."""
     st.subheader("📋 Deal Management")
@@ -410,17 +520,20 @@ def render_arranger_page(api_client: APIClient) -> None:
     st.caption("Create, validate, and manage RMBS deal structures")
 
     # Main interface tabs
-    tabs = st.tabs(["📝 Deal Specification", "📊 Collateral Data", "📋 Deal Management"])
+    tabs = st.tabs(["📝 Deal Specification", "📋 Loan Tape", "📊 Collateral Data", "📋 Deal Management"])
 
     with tabs[0]:
         render_deal_upload_section(api_client)
 
     with tabs[1]:
-        render_collateral_upload_section(api_client)
+        render_loan_tape_upload_section(api_client)
 
     with tabs[2]:
+        render_collateral_upload_section(api_client)
+
+    with tabs[3]:
         render_deal_management_section(api_client)
 
     # Footer
     st.markdown("---")
-    st.caption("💡 Tip: Start by uploading a deal specification, then add collateral data to complete the deal structure.")
+    st.caption("💡 Tip: Start with deal specification, then upload loan tape for ML models, followed by collateral characteristics.")

@@ -486,6 +486,43 @@ def _performance_file_path(deal_id: str) -> Path:
     """Return the path where performance data is persisted."""
     return PERFORMANCE_DIR / f"{_safe_deal_id(deal_id)}.csv"
 
+def _loan_tape_file_path(deal_id: str) -> Path:
+    """Return the path where loan tape data should be stored."""
+    datasets_dir = settings.package_root / "datasets"
+    return datasets_dir / deal_id / "loan_tape.csv"
+
+def _sync_to_datasets(deal_id: str, filename: str, content: Any, is_json: bool = True) -> None:
+    """
+    Sync a file to the datasets/{deal_id}/ folder for user convenience.
+    
+    Parameters
+    ----------
+    deal_id : str
+        Deal identifier
+    filename : str
+        Filename to save (e.g., "deal_spec.json", "collateral.json")
+    content : Any
+        Content to write (dict for JSON, bytes/str for CSV)
+    is_json : bool
+        If True, write as JSON; otherwise write as binary/text
+    """
+    try:
+        datasets_dir = settings.package_root / "datasets"
+        deal_dir = datasets_dir / deal_id
+        deal_dir.mkdir(parents=True, exist_ok=True)
+        
+        target_path = deal_dir / filename
+        if is_json:
+            with target_path.open("w", encoding="utf-8") as f:
+                json.dump(content, f, indent=2)
+        else:
+            mode = "wb" if isinstance(content, bytes) else "w"
+            with target_path.open(mode, encoding="utf-8" if mode == "w" else None) as f:
+                f.write(content)
+    except Exception as e:
+        # Don't fail the upload if sync fails - just log it
+        print(f"Warning: Failed to sync {filename} to datasets/{deal_id}/: {e}")
+
 def _load_persisted_deals() -> None:
     """Load persisted deals into the in-memory store on startup."""
     for path in DEALS_DIR.glob("*.json"):
@@ -1067,6 +1104,10 @@ async def upload_deal(
     path = _deal_file_path(deal.deal_id)
     with path.open("w", encoding="utf-8") as f:
         json.dump(deal.spec, f, indent=2)
+    
+    # Sync to datasets/ folder for user convenience
+    _sync_to_datasets(deal.deal_id, "deal_spec.json", deal.spec, is_json=True)
+    
     _write_versioned_json(
         DEALS_VERSIONS_DIR,
         deal.deal_id,
@@ -1101,12 +1142,17 @@ async def upload_collateral(
 
     COLLATERAL_DB[payload.deal_id] = coll
     path = _collateral_file_path(payload.deal_id)
+    collateral_wrapped = {"deal_id": payload.deal_id, "data": coll}
     with path.open("w", encoding="utf-8") as f:
-        json.dump({"deal_id": payload.deal_id, "data": coll}, f, indent=2)
+        json.dump(collateral_wrapped, f, indent=2)
+    
+    # Sync to datasets/ folder for user convenience
+    _sync_to_datasets(payload.deal_id, "collateral.json", collateral_wrapped, is_json=True)
+    
     _write_versioned_json(
         COLLATERAL_VERSIONS_DIR,
         payload.deal_id,
-        {"deal_id": payload.deal_id, "data": coll},
+        collateral_wrapped,
         created_by=payload.created_by,
         source_name=payload.source_name,
     )
@@ -1127,6 +1173,64 @@ async def get_collateral(
     if collateral is None:
         raise HTTPException(404, "Collateral not found")
     return {"deal_id": deal_id, "collateral": collateral}
+
+@app.post("/loan-tape/{deal_id}", tags=["Arranger"])
+async def upload_loan_tape(
+    deal_id: str,
+    file: UploadFile = File(...),
+    created_by: Optional[str] = None,
+    source_name: Optional[str] = None,
+    x_user_role: Optional[str] = Header(default=None, alias="X-User-Role"),
+) -> Dict[str, Any]:
+    """Arranger uploads origination loan tape as CSV."""
+    # Check role
+    _require_role(["arranger"], x_user_role)
+    """Arranger uploads origination loan tape as CSV."""
+    try:
+        # Read file content
+        content = await file.read()
+
+        # Parse CSV
+        try:
+            # Try different separators and encodings
+            df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
+        except Exception as e:
+            raise HTTPException(400, f"Invalid CSV format: {e}. Please ensure the file is a valid CSV.")
+
+        # Validate required columns for ML features
+        required_cols = ["LoanId", "OriginalBalance", "CurrentBalance", "NoteRate", "RemainingTermMonths", "FICO", "LTV"]
+        available_cols = list(df.columns)
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise HTTPException(400, f"Missing required columns for ML features: {', '.join(missing_cols)}. Available columns: {', '.join(available_cols)}")
+
+        # Save the loan tape
+        try:
+            loan_tape_path = _loan_tape_file_path(deal_id)
+            loan_tape_path.parent.mkdir(parents=True, exist_ok=True)
+            with loan_tape_path.open("wb") as f:
+                f.write(content)
+        except Exception as e:
+            raise HTTPException(500, f"Failed to save loan tape file: {e}")
+
+        # Log audit event
+        try:
+            _log_audit_event(
+                "loan_tape.upload",
+                actor=created_by,
+                deal_id=deal_id,
+                details={"source_name": source_name or file.filename, "rows": len(df)},
+            )
+        except Exception as e:
+            # Don't fail the upload if audit logging fails
+            print(f"Warning: Audit logging failed: {e}")
+
+        return {"message": f"Loan tape for {deal_id} stored successfully.", "rows": len(df)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Unexpected error: {e}")
 
 @app.post("/performance/{deal_id}", tags=["Servicer"])
 async def upload_performance(
@@ -1183,6 +1287,17 @@ async def upload_performance(
     PERFORMANCE_DB[deal_id] = df_all.to_dict(orient="records")
     path = _performance_file_path(deal_id)
     df_all.to_csv(path, index=False)
+    
+    # Sync consolidated performance data to datasets/ folder for user convenience
+    try:
+        datasets_dir = settings.package_root / "datasets"
+        deal_dir = datasets_dir / deal_id
+        deal_dir.mkdir(parents=True, exist_ok=True)
+        servicer_tape_path = deal_dir / "servicer_tape.csv"
+        df_all.to_csv(servicer_tape_path, index=False)
+    except Exception as e:
+        print(f"Warning: Failed to sync servicer_tape.csv to datasets/{deal_id}/: {e}")
+    
     _write_versioned_bytes(
         PERFORMANCE_VERSIONS_DIR,
         deal_id,
