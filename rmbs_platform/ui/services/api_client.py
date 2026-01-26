@@ -26,6 +26,29 @@ class APIError(Exception):
         self.details = details or {}
 
 
+def _get_default_api_url() -> str:
+    """
+    Get API URL from Streamlit secrets, environment variable, or localhost default.
+
+    Priority:
+    1. Streamlit secrets (for Streamlit Cloud deployment)
+    2. Environment variable RMBS_API_URL (for local dev with Cloud Run)
+    3. Localhost default (for local dev with local API)
+    """
+    import os
+
+    # Try Streamlit secrets first (for Streamlit Cloud)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and 'RMBS_API_URL' in st.secrets:
+            return st.secrets['RMBS_API_URL']
+    except Exception:
+        pass
+
+    # Fall back to environment variable or localhost
+    return os.environ.get("RMBS_API_URL", "http://127.0.0.1:8000")
+
+
 class APIClient:
     """
     Centralized API client with caching and error handling.
@@ -35,19 +58,25 @@ class APIClient:
     - Response caching
     - Error normalization
     - Progress tracking for long operations
+
+    Configure via environment variable:
+        RMBS_API_URL=https://rmbs-api-xxxxx-uc.a.run.app
     """
 
-    def __init__(self, base_url: str = "http://127.0.0.1:8000", timeout: int = 30):
+    def __init__(self, base_url: str = None, timeout: int = 30):
         """
         Initialize API client.
 
         Parameters
         ----------
         base_url : str
-            Base URL for the API server
+            Base URL for the API server. If not provided, reads from
+            RMBS_API_URL environment variable or defaults to localhost.
         timeout : int
             Default timeout for requests in seconds
         """
+        if base_url is None:
+            base_url = _get_default_api_url()
         self.base_url = base_url.rstrip('/')
         self.timeout = timeout
         self.headers: Dict[str, str] = {}

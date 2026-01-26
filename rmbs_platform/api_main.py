@@ -85,17 +85,14 @@ from fastapi import (
 )
 from pydantic import BaseModel
 
-# Bootstrap sys.path for package resolution
-if __package__ in (None, ""):
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
-
 # Import simulation engine and configuration
+# Supports both: running as package (from .module) and direct execution (from module)
 try:
     from .engine import run_simulation
     from .config import settings, get_severity_parameters, validate_storage_paths
 except ImportError:
-    from rmbs_platform.engine import run_simulation
-    from rmbs_platform.config import settings, get_severity_parameters, validate_storage_paths
+    from engine import run_simulation
+    from config import settings, get_severity_parameters, validate_storage_paths
 
 # API Version
 API_VERSION = "1.2.0"
@@ -238,6 +235,18 @@ Standard rate limits apply:
         "url": "https://rmbs-platform.example.com/license",
     },
 )
+
+# CORS middleware for frontend access (Cloud Run deployment)
+from fastapi.middleware.cors import CORSMiddleware
+
+if settings.enable_cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 def _require_role(
     allowed_roles: List[str],

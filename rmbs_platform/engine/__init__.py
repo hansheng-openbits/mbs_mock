@@ -67,7 +67,7 @@ try:
     from ..ml.severity import SeverityModel
 except ImportError:
     try:
-        from rmbs_platform.ml.severity import SeverityModel
+        from ml.severity import SeverityModel
     except ImportError:
         SeverityModel = None  # type: ignore
 
@@ -628,8 +628,8 @@ def run_simulation(
                     from ..ml.models import StochasticRateModel, UniversalModel
                     from ..ml.portfolio import DataManager, SurveillanceEngine
                 except ImportError:
-                    from rmbs_platform.ml.models import StochasticRateModel, UniversalModel
-                    from rmbs_platform.ml.portfolio import DataManager, SurveillanceEngine
+                    from ml.models import StochasticRateModel, UniversalModel
+                    from ml.portfolio import DataManager, SurveillanceEngine
 
                 import json as json_module
 
@@ -709,7 +709,7 @@ def run_simulation(
                 try:
                     from ..ml.severity import SeverityModel as SevModel
                 except ImportError:
-                    from rmbs_platform.ml.severity import SeverityModel as SevModel
+                    from ml.severity import SeverityModel as SevModel
                 severity_model = SevModel()
 
                 # Run ML simulation with severity model
