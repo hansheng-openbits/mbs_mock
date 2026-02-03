@@ -1,0 +1,21 @@
+╔════════════════════════════════════════════════════════════════╗
+║            ALCHEMY FAUCET - QUICK REFERENCE                    ║
+╚════════════════════════════════════════════════════════════════╝
+
+📍 YOUR ADDRESS: 0x54d353CFA012F1E0D848F23d42755e98995Dc5f2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUICK STEPS:
+
+1. Sign up: https://www.alchemy.com/ (FREE, 30 seconds)
+
+2. Visit faucet: https://www.alchemy.com/faucets/arbitrum-sepolia
+
+3. Paste: 0x54d353CFA012F1E0D848F23d42755e98995Dc5f2
+
+4. Click "Send Me ETH"
+
+5. Get 0.5 testnet ETH! 🎉
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

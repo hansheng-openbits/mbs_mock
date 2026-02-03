@@ -1,0 +1,63 @@
+{
+  "holders": {
+    "0x0000000000000000000000000000000000000001": {
+      "address": "0x0000000000000000000000000000000000000001",
+      "holdings": {
+        "FREDDIE_SAMPLE_2017_2020": {
+          "ClassA1": {
+            "tranche_id": "ClassA1",
+            "tranche_address": "0x9eeebf0c269a46ffe7ea33caaac38b1ec2b2ef8a",
+            "balance": 150000000.0,
+            "initial_balance": 150000000,
+            "issued_at": "2026-02-02T01:32:02.921864+00:00",
+            "updated_at": "2026-02-02T01:34:21.244546+00:00",
+            "last_tx_hash": "0xd09c771f374abac6ad672fd2b7b217d2891cd82b5eb236554b7c092a90e4e257"
+          },
+          "ClassA2": {
+            "tranche_id": "ClassA2",
+            "tranche_address": "0x7c96ddf2dfb993827ff8ce2c87541cf0e2619f7e",
+            "balance": 60000000.0,
+            "initial_balance": 60000000,
+            "issued_at": "2026-02-02T01:32:07.253016+00:00",
+            "updated_at": "2026-02-02T01:34:21.244568+00:00",
+            "last_tx_hash": "0x449d21b11c31ed336b2406b843df4f366256209ef4330a668562b4951b245690"
+          }
+        }
+      },
+      "created_at": "2026-02-01T23:24:46.902651+00:00",
+      "updated_at": "2026-02-02T01:34:59.705527+00:00",
+      "pending_yield_distributions": [
+        {
+          "distribution_id": "DIST_20260202T013421.245018+0000_ClassA1",
+          "deal_id": "FREDDIE_SAMPLE_2017_2020",
+          "tranche_id": "ClassA1",
+          "period": 1,
+          "amount": 375000.0,
+          "distributed_at": "2026-02-02T01:34:21.245018+00:00",
+          "claimed": true,
+          "claimed_at": "2026-02-02T01:34:59.705514+00:00"
+        },
+        {
+          "distribution_id": "DIST_20260202T013421.245630+0000_ClassA2",
+          "deal_id": "FREDDIE_SAMPLE_2017_2020",
+          "tranche_id": "ClassA2",
+          "period": 1,
+          "amount": 24612.195833333302,
+          "distributed_at": "2026-02-02T01:34:21.245630+00:00",
+          "claimed": true,
+          "claimed_at": "2026-02-02T01:34:59.705524+00:00"
+        }
+      ],
+      "cash_balance": 399612.1958333333
+    },
+    "0x0000000000000000000000000000000000000002": {
+      "address": "0x0000000000000000000000000000000000000002",
+      "holdings": {},
+      "created_at": "2026-02-01T23:24:46.903008+00:00",
+      "updated_at": "2026-02-02T01:15:02.768100+00:00",
+      "pending_yield_distributions": [],
+      "cash_balance": 0.0
+    }
+  },
+  "updated_at": "2026-02-02T01:34:59.705546+00:00"
+}

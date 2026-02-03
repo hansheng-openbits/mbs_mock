@@ -1,0 +1,49 @@
+╔════════════════════════════════════════════════════════════════════╗
+║         QUICK REFERENCE: COINBASE → TESTNET                        ║
+╚════════════════════════════════════════════════════════════════════╝
+
+📍 YOUR ADDRESS: 0x54d353CFA012F1E0D848F23d42755e98995Dc5f2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ RECOMMENDED: Option 1 (Testnet First)
+
+1. Send 0.001 ETH from Coinbase:
+   - Network: Ethereum Mainnet
+   - To: 0x54d353CFA012F1E0D848F23d42755e98995Dc5f2
+   - Amount: 0.001 ETH (~$2.50)
+
+2. After transfer confirms (2-5 min), use faucet:
+   - Visit: https://faucet.quicknode.com/arbitrum/sepolia
+   - Paste address above
+   - Get FREE 0.01 testnet ETH
+
+3. Run deployment:
+   cd contracts
+   ./deploy_when_funded.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ ALTERNATIVE: Option 2 (Direct Production)
+
+1. Send 0.005 ETH from Coinbase:
+   - Network: Arbitrum One (Important!)
+   - To: 0x54d353CFA012F1E0D848F23d42755e98995Dc5f2
+   - Amount: 0.005 ETH (~$12.50)
+
+2. Wait 30 seconds for confirmation
+
+3. Run deployment:
+   cd contracts
+   # Update .env with Arbitrum One RPC
+   forge script script/Deploy.s.sol:Deploy \
+     --rpc-url https://arb1.arbitrum.io/rpc \
+     --broadcast \
+     -vvv
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 After Transfer:
+I'll automatically detect the ETH and guide you through deployment!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

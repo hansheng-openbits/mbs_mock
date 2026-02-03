@@ -1,0 +1,23 @@
+{
+  "network": {
+    "name": "polygon",
+    "chain_id": 137,
+    "rpc_url": "https://polygon-rpc.com",
+    "block_explorer": "https://polygonscan.com",
+    "is_testnet": false
+  },
+  "contracts": {
+    "payment_token": null,
+    "deal_registry": null,
+    "loan_nft_factory": null,
+    "tranche_token_factory": null,
+    "waterfall_engine": null
+  },
+  "settings": {
+    "gas_limit": 8000000,
+    "gas_price_gwei": 50,
+    "confirmation_blocks": 5,
+    "mock_mode": false
+  },
+  "description": "Polygon Mainnet - Production"
+}

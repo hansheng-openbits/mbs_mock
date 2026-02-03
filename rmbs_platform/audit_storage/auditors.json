@@ -1,0 +1,17 @@
+[
+  {
+    "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+    "address": "0xAuditor123456789",
+    "name": "Test Auditor",
+    "email": "test.auditor@auditfirm.com",
+    "firm": "Big Four Audit Firm LLP",
+    "auditor_type": "FINANCIAL_AUDITOR",
+    "certifications": [],
+    "registered_at": "2026-02-02 14:36:22.879154+00:00",
+    "last_activity_at": "2026-02-02T14:36:22.884436+00:00",
+    "is_active": true,
+    "reputation_score": 510,
+    "completed_audits": 0,
+    "disputes_lost": 0
+  }
+]

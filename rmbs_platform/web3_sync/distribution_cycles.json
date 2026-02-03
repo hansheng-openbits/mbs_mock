@@ -1,0 +1,103 @@
+{
+  "deals": {
+    "FREDDIE_SAMPLE_2017_2020": {
+      "periods": [
+        {
+          "period_id": "0e48556d-32be-4c38-8846-4861b59087c6",
+          "deal_id": "FREDDIE_SAMPLE_2017_2020",
+          "period_number": 1,
+          "collection_date": "2026-02-02T01:34:00.378028+00:00",
+          "status": "distributed",
+          "total_collections": 399612.1958333333,
+          "interest_collected": 399612.1958333333,
+          "principal_collected": 0.0,
+          "prepayments": 0.0,
+          "defaults": 0.0,
+          "losses": 0.0,
+          "recoveries": 0.0,
+          "beginning_balance": 0.0,
+          "ending_balance": 115071000.0,
+          "distribution_date": "2026-02-02T01:34:21.244028+00:00",
+          "tranche_distributions": {
+            "ClassA1": {
+              "tranche_id": "ClassA1",
+              "interest_due": 375000.0,
+              "interest_paid": 375000.0,
+              "interest_shortfall": 0,
+              "principal_due": 0.0,
+              "principal_paid": 0.0,
+              "principal_shortfall": 0,
+              "loss_allocation": 0.0,
+              "beginning_balance": 150000000.0,
+              "ending_balance": 150000000.0,
+              "factor": 1.0
+            },
+            "ClassA2": {
+              "tranche_id": "ClassA2",
+              "interest_due": 347500.00000000006,
+              "interest_paid": 24612.195833333302,
+              "interest_shortfall": 322887.80416666676,
+              "principal_due": 0.0,
+              "principal_paid": 0.0,
+              "principal_shortfall": 0,
+              "loss_allocation": 0.0,
+              "beginning_balance": 60000000.0,
+              "ending_balance": 60000000.0,
+              "factor": 1.0
+            },
+            "ClassB": {
+              "tranche_id": "ClassB",
+              "interest_due": 104166.66666666667,
+              "interest_paid": 0.0,
+              "interest_shortfall": 104166.66666666667,
+              "principal_due": 0.0,
+              "principal_paid": 0.0,
+              "principal_shortfall": 0,
+              "loss_allocation": 0.0,
+              "beginning_balance": 25000000.0,
+              "ending_balance": 25000000.0,
+              "factor": 1.0
+            },
+            "ClassIO": {
+              "tranche_id": "ClassIO",
+              "interest_due": 0.0,
+              "interest_paid": 0.0,
+              "interest_shortfall": 0,
+              "principal_due": 0.0,
+              "principal_paid": 0.0,
+              "principal_shortfall": 0,
+              "loss_allocation": 0.0,
+              "beginning_balance": 0.0,
+              "ending_balance": 0.0,
+              "factor": 0
+            },
+            "ClassR": {
+              "tranche_id": "ClassR",
+              "interest_due": 0.0,
+              "interest_paid": 0.0,
+              "interest_shortfall": 0,
+              "principal_due": 0.0,
+              "principal_paid": 0.0,
+              "principal_shortfall": 0,
+              "loss_allocation": 0.0,
+              "beginning_balance": 15000000.0,
+              "ending_balance": 15000000.0,
+              "factor": 1.0
+            }
+          },
+          "total_interest_distributed": 399612.1958333333,
+          "total_principal_distributed": 0.0,
+          "reserve_deposit": 0,
+          "excess_spread": 0.0,
+          "servicer_tape_version": "servicer_201702.csv",
+          "waterfall_tx_hash": "0x2d5142881b808d95b458a9fafb2a003969d934b71e1571897ab80a09a45bd836",
+          "created_at": "2026-02-02T01:34:00.378028+00:00",
+          "updated_at": "2026-02-02T01:34:21.244028+00:00",
+          "created_by": null,
+          "processed_by": "trustee"
+        }
+      ]
+    }
+  },
+  "updated_at": "2026-02-02T01:15:02.768100+00:00"
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "finding_id": "9a5a73c5-ff18-4236-950b-156b7c5d6aca",
+    "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "severity": "MEDIUM",
+    "title": "Loss severity calculation variance detected",
+    "description": "The loss severity reported in Period 1 (35.2%) deviates from the expected range.",
+    "affected_periods": [
+      1
+    ],
+    "evidence_hashes": [],
+    "recommendation": "Review loss severity methodology and validate against historical data.",
+    "status": "OPEN",
+    "created_at": "2026-02-02 14:36:22.882732+00:00",
+    "acknowledged_at": null,
+    "acknowledged_by": null,
+    "resolved_at": null,
+    "resolved_by": null,
+    "resolution_notes": null
+  }
+]

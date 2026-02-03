@@ -1,0 +1,31 @@
+{
+  "deal_id": "FREDDIE_SAMPLE_2017_2020",
+  "version": 27,
+  "created_at": "2026-02-01T22:53:36.028639+00:00",
+  "created_by": "unknown",
+  "source_name": "servicer_201702.csv",
+  "content_hash": "c1d5c080947105ad27468ba6a9deeb104fdf8a88e26c44dc5db0b83295b730ee",
+  "path": "/media/hansheng/cc7df9bc-e728-4b8d-a215-b64f31876acc/cdo-tee-mock/rmbs_platform_archive/v_0.2.1/rmbs_platform/performance_versions/FREDDIE_SAMPLE_2017_2020_v0027.csv",
+  "rows_new": 500,
+  "rows_total": 500,
+  "schema_type": "loan_level",
+  "period_min": 1,
+  "period_max": 1,
+  "n_periods": 1,
+  "columns": [
+    "Period",
+    "LoanId",
+    "InterestCollected",
+    "ScheduledInterest",
+    "ServicerAdvances",
+    "PrincipalCollected",
+    "ScheduledPrincipal",
+    "Prepayment",
+    "RealizedLoss",
+    "EndBalance",
+    "LoanStatus",
+    "DQStatus",
+    "PoolStatus",
+    "Recoveries"
+  ]
+}

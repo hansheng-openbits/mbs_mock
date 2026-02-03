@@ -5,6 +5,7 @@ Arranger Page
 Deal structuring workbench for arrangers with comprehensive deal management.
 """
 
+from pathlib import Path
 from ..services.api_client import APIClient
 from ..components.status import success_message, error_message, loading_spinner
 from ..components.data_display import data_table
@@ -458,7 +459,7 @@ def render_deal_management_section(api_client: APIClient) -> None:
             "Name": deal.get("deal_name", "N/A"),
             "Asset Type": deal.get("asset_type", "N/A"),
             "Has Collateral": "✅" if deal.get("has_collateral") else "❌",
-            "Latest Period": deal.get("latest_performance_period", "N/A")
+            "Latest Period": deal.get("latest_period", "N/A")
         })
 
     if deal_rows:
@@ -513,6 +514,215 @@ def render_deal_management_section(api_client: APIClient) -> None:
                 except Exception as e:
                     st.error(f"Failed to load version history: {e}")
 
+            # Reset Deal Data Section
+            st.markdown("---")
+            st.subheader("🔄 Reset Deal Data (Testing)")
+            
+            with st.expander("⚠️ Reset Options - USE WITH CAUTION", expanded=False):
+                st.warning("**This will permanently delete data for this deal. Use only for testing purposes!**")
+                
+                st.info("💡 **Tip**: For a complete fresh start, keep all checkboxes checked including 'Performance Data'. "
+                        "Otherwise, period numbers will continue from where the old data left off.")
+                
+                st.markdown("**Select data to reset:**")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    reset_token_holders = st.checkbox(
+                        "🎫 Token Holdings",
+                        value=True,
+                        help="Clear all token holder records for this deal",
+                        key=f"reset_tokens_{selected_deal_id}"
+                    )
+                    reset_distributions = st.checkbox(
+                        "📊 Distribution Cycles",
+                        value=True,
+                        help="Clear all distribution period records",
+                        key=f"reset_dist_{selected_deal_id}"
+                    )
+                    reset_yield_distributions = st.checkbox(
+                        "💰 Yield Distributions",
+                        value=True,
+                        help="Clear all yield distribution records",
+                        key=f"reset_yields_{selected_deal_id}"
+                    )
+                
+                with col2:
+                    reset_performance = st.checkbox(
+                        "📈 Performance Data",
+                        value=True,  # ON by default for full reset
+                        help="Clear all servicer performance data (recommended for fresh start)",
+                        key=f"reset_perf_{selected_deal_id}"
+                    )
+                    reset_nft_records = st.checkbox(
+                        "🎨 NFT Records",
+                        value=False,
+                        help="Clear loan NFT records and mappings",
+                        key=f"reset_nft_{selected_deal_id}"
+                    )
+                    reset_tranche_registry = st.checkbox(
+                        "📜 Tranche Registry",
+                        value=False,
+                        help="Clear deployed tranche contract addresses",
+                        key=f"reset_tranche_{selected_deal_id}"
+                    )
+                
+                st.markdown("---")
+                
+                # Confirmation
+                confirm_text = st.text_input(
+                    f"Type **{selected_deal_id}** to confirm reset:",
+                    key=f"reset_confirm_{selected_deal_id}",
+                    help="This prevents accidental data deletion"
+                )
+                
+                reset_disabled = confirm_text != selected_deal_id
+                
+                if st.button(
+                    "🗑️ Reset Deal Data",
+                    type="primary",
+                    disabled=reset_disabled,
+                    use_container_width=True,
+                    key=f"reset_btn_{selected_deal_id}"
+                ):
+                    try:
+                        with loading_spinner(f"Resetting data for {selected_deal_id}..."):
+                            result = api_client.reset_deal_data(
+                                deal_id=selected_deal_id,
+                                reset_token_holders=reset_token_holders,
+                                reset_distributions=reset_distributions,
+                                reset_yield_distributions=reset_yield_distributions,
+                                reset_performance=reset_performance,
+                                reset_nft_records=reset_nft_records,
+                                reset_tranche_registry=reset_tranche_registry,
+                            )
+                        
+                        if result.get("success"):
+                            success_message(f"Successfully reset data for {selected_deal_id}! 🔄")
+                            
+                            # Show actions taken
+                            actions = result.get("actions", [])
+                            if actions:
+                                st.success("**Actions performed:**")
+                                for action in actions:
+                                    st.write(f"  ✅ {action}")
+                        else:
+                            st.warning(f"Reset completed with warnings")
+                        
+                        # Show any warnings
+                        warnings = result.get("warnings", [])
+                        if warnings:
+                            st.warning("**Warnings:**")
+                            for warning in warnings:
+                                st.write(f"  ⚠️ {warning}")
+                        
+                    except Exception as e:
+                        error_message(f"Failed to reset deal data: {e}")
+                
+                if reset_disabled and confirm_text:
+                    st.error(f"Confirmation text does not match. Please type exactly: {selected_deal_id}")
+
+
+def render_loan_nft_minting_section(api_client: APIClient) -> None:
+    """Render the loan NFT minting section."""
+    st.subheader("🎨 Mint Loan NFTs")
+    st.caption("Create NFT registry for collateral pool (one NFT per loan)")
+
+    # Get available deals
+    deals = api_client.get_deals()
+    if not deals:
+        st.info("No deals available. Upload a deal specification first.")
+        return
+
+    deal_ids = [d.get("deal_id") for d in deals]
+    selected_deal = st.selectbox(
+        "Select Deal",
+        deal_ids,
+        key="nft_deal",
+        help="Choose a deal to mint loan NFTs for"
+    )
+
+    if selected_deal:
+        # Check if deal has loan tape
+        deal_folder = Path("datasets") / selected_deal
+        loan_tape_path = deal_folder / "loan_tape.csv"
+        
+        if loan_tape_path.exists():
+            # Read loan tape to show stats
+            import pandas as pd
+            loan_df = pd.read_csv(loan_tape_path)
+            
+            st.success(f"✅ Found loan tape with {len(loan_df)} loans")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Loans", len(loan_df))
+            with col2:
+                st.metric("Total Balance", f"${loan_df['CurrentBalance'].sum():,.0f}")
+            with col3:
+                st.metric("Avg Balance", f"${loan_df['CurrentBalance'].mean():,.0f}")
+            with col4:
+                st.metric("Avg FICO", f"{loan_df['FICO'].mean():.0f}")
+            
+            st.markdown("---")
+            
+            st.write("**NFT Minting Configuration:**")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                recipient_address = st.text_input(
+                    "Recipient Address",
+                    value="0x0000000000000000000000000000000000000001",
+                    help="Wallet address to receive the minted NFTs (typically issuer or trust SPV)"
+                )
+            
+            with col2:
+                loan_nft_contract = st.text_input(
+                    "LoanNFT Contract",
+                    value="0x0000000000000000000000000000000000000000",
+                    help="Address of the deployed LoanNFT contract"
+                )
+
+            st.markdown("---")
+            
+            st.info("💡 **Workflow**: Minting loan NFTs creates an on-chain registry of the collateral pool. Each loan gets a unique NFT with privacy-preserving metadata.")
+
+            if st.button("🎨 Mint Loan NFTs", type="primary", use_container_width=True):
+                if recipient_address == "0x0000000000000000000000000000000000000000":
+                    st.error("Please enter a valid recipient address")
+                    return
+
+                try:
+                    with loading_spinner(f"Minting {len(loan_df)} loan NFTs..."):
+                        result = api_client.mint_loan_nfts(
+                            deal_id=selected_deal,
+                            recipient_address=recipient_address,
+                            loan_nft_contract=loan_nft_contract
+                        )
+
+                        success_message(
+                            f"Successfully minted {result['count']} loan NFTs! 🎨",
+                            celebration=True
+                        )
+
+                        st.info(f"Transaction Hash: `{result['transaction_hash']}`")
+                        
+                        with st.expander("View Token IDs"):
+                            st.write(f"**First 10 Token IDs:**")
+                            st.json(result["token_ids"][:10])
+                            if result["count"] > 10:
+                                st.caption(f"... and {result['count'] - 10} more")
+
+                except Exception as e:
+                    error_message(
+                        f"Failed to mint loan NFTs: {e}",
+                        details=str(e),
+                        show_retry=True
+                    )
+        else:
+            st.warning(f"⚠️ No loan tape found for deal {selected_deal}")
+            st.info("📝 Upload a loan tape first using the 'Loan Tape' tab, then return here to mint NFTs.")
+
 
 def render_arranger_page(api_client: APIClient) -> None:
     """Render the complete arranger deal structuring workbench."""
@@ -520,7 +730,7 @@ def render_arranger_page(api_client: APIClient) -> None:
     st.caption("Create, validate, and manage RMBS deal structures")
 
     # Main interface tabs
-    tabs = st.tabs(["📝 Deal Specification", "📋 Loan Tape", "📊 Collateral Data", "📋 Deal Management"])
+    tabs = st.tabs(["📝 Deal Specification", "📋 Loan Tape", "🎨 Mint Loan NFTs", "📊 Collateral Data", "📋 Deal Management"])
 
     with tabs[0]:
         render_deal_upload_section(api_client)
@@ -529,11 +739,14 @@ def render_arranger_page(api_client: APIClient) -> None:
         render_loan_tape_upload_section(api_client)
 
     with tabs[2]:
-        render_collateral_upload_section(api_client)
+        render_loan_nft_minting_section(api_client)
 
     with tabs[3]:
+        render_collateral_upload_section(api_client)
+
+    with tabs[4]:
         render_deal_management_section(api_client)
 
     # Footer
     st.markdown("---")
-    st.caption("💡 Tip: Start with deal specification, then upload loan tape for ML models, followed by collateral characteristics.")
+    st.caption("💡 Tip: Upload deal → loan tape → mint NFTs → collateral summary. NFTs represent your collateral pool on-chain.")

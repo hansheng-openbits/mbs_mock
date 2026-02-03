@@ -1,0 +1,14 @@
+{
+  "deals": {
+    "FREDDIE_SAMPLE_2017_2020": {
+      "tranches": {
+        "ClassA1": "0x9eeebf0c269a46ffe7ea33caaac38b1ec2b2ef8a",
+        "ClassA2": "0x7c96ddf2dfb993827ff8ce2c87541cf0e2619f7e",
+        "ClassB": "0x20151b391b4f1c024e9a98e3d719a8f94ac3cb1b",
+        "ClassIO": "0xb8d38b53b5892c9edc56f2ba8eab81c4c849193d",
+        "ClassR": "0xb93f733ede109afd167c4d4e8473c3fc505445d5"
+      },
+      "updated_at": "2026-02-01T05:03:47.245384+00:00"
+    }
+  }
+}

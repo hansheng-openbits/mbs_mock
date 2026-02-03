@@ -1,0 +1,17 @@
+[
+  {
+    "attestation_id": "2d4e66e8-5fb0-4a77-9c6b-7c953df7546f",
+    "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "period_start": 1,
+    "period_end": 1,
+    "attestation_type": "QUALIFIED",
+    "summary": "Waterfall calculations verified for Period 1. Minor variance noted.",
+    "findings_summary": "One medium-severity finding related to loss severity methodology.",
+    "findings_count": 1,
+    "report_hash": null,
+    "report_uri": null,
+    "created_at": "2026-02-02 14:36:22.883707+00:00",
+    "signature": null
+  }
+]

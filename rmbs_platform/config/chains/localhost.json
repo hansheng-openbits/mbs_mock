@@ -1,0 +1,23 @@
+{
+  "network": {
+    "name": "localhost",
+    "chain_id": 31337,
+    "rpc_url": "http://127.0.0.1:8545",
+    "block_explorer": null,
+    "is_testnet": true
+  },
+  "contracts": {
+    "payment_token": "0x0000000000000000000000000000000000000000",
+    "deal_registry": null,
+    "loan_nft_factory": null,
+    "tranche_token_factory": null,
+    "waterfall_engine": null
+  },
+  "settings": {
+    "gas_limit": 8000000,
+    "gas_price_gwei": 1,
+    "confirmation_blocks": 1,
+    "mock_mode": true
+  },
+  "description": "Local development chain (Hardhat/Ganache)"
+}

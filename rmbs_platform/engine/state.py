@@ -10,6 +10,7 @@ Key Classes
 -----------
 - :class:`DealState`: Main state container tracking all deal components.
 - :class:`BondState`: Individual tranche balance and shortfall tracking.
+- :class:`TriggerState`: Trigger status with cure logic to prevent flickering.
 - :class:`Snapshot`: Point-in-time state record for reporting.
 
 The state is initialized from a :class:`DealDefinition` and then mutated
@@ -100,6 +101,108 @@ class BondState:
 
 
 @dataclass
+class TriggerState:
+    """
+    Track trigger status with cure logic to prevent flickering.
+    
+    Real RMBS deals require triggers to remain breached/cured for
+    multiple consecutive periods before changing state. This prevents
+    "flickering" where a trigger alternates between breached and cured
+    due to minor fluctuations in the underlying metrics.
+    
+    Attributes
+    ----------
+    trigger_id : str
+        Identifier of the trigger being tracked.
+    is_breached : bool
+        Current breach status. True if trigger is breached.
+    months_breached : int
+        Consecutive periods the trigger has been breached.
+    months_cured : int
+        Consecutive periods the trigger has passed while in breached state.
+    cure_threshold : int
+        Number of consecutive passing periods required to cure a breach.
+        Typical value: 3 periods.
+    
+    Example
+    -------
+    >>> trigger = TriggerState("DelinqTest", cure_threshold=3)
+    >>> trigger.update(test_passed=False)  # Period 1: Fails
+    >>> print(f"Breached: {trigger.is_breached}, Months: {trigger.months_breached}")
+    Breached: True, Months: 1
+    >>> trigger.update(test_passed=True)  # Period 2: Passes (cure count = 1)
+    >>> print(f"Breached: {trigger.is_breached}")  # Still breached (need 3 periods)
+    Breached: True
+    >>> trigger.update(test_passed=True)  # Period 3: Passes (cure count = 2)
+    >>> trigger.update(test_passed=True)  # Period 4: Passes (cure count = 3)
+    >>> print(f"Breached: {trigger.is_breached}")  # Now cured
+    Breached: False
+    """
+    trigger_id: str
+    is_breached: bool = False
+    months_breached: int = 0
+    months_cured: int = 0
+    cure_threshold: int = 3  # Industry standard: 3 consecutive passing periods
+    
+    def update(self, test_passed: bool) -> None:
+        """
+        Update trigger state based on current period's test result.
+        
+        Parameters
+        ----------
+        test_passed : bool
+            Whether the trigger test passed this period.
+            
+        Notes
+        -----
+        **Cure Logic**:
+        - If test fails: Trigger is breached immediately, cure counter resets.
+        - If test passes while breached: Cure counter increments.
+        - If cure counter reaches threshold: Trigger is cured, breach counter resets.
+        
+        **Flickering Prevention**:
+        Once breached, a trigger requires `cure_threshold` consecutive
+        passing periods to cure. This prevents oscillation between states.
+        """
+        if test_passed:
+            # Test is passing
+            if self.is_breached:
+                # Currently breached - increment cure counter
+                self.months_cured += 1
+                if self.months_cured >= self.cure_threshold:
+                    # Cure threshold met - trigger is cured
+                    self.is_breached = False
+                    self.months_breached = 0
+                    self.months_cured = 0
+                    logger.info(
+                        f"Trigger '{self.trigger_id}' cured after "
+                        f"{self.cure_threshold} consecutive passing periods"
+                    )
+            else:
+                # Not breached - reset counters
+                self.months_cured = 0
+        else:
+            # Test is failing
+            if not self.is_breached:
+                # Newly breached
+                logger.info(f"Trigger '{self.trigger_id}' breached")
+            
+            self.is_breached = True
+            self.months_breached += 1
+            self.months_cured = 0  # Reset cure counter
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Export trigger state for reporting."""
+        return {
+            "trigger_id": self.trigger_id,
+            "is_breached": self.is_breached,
+            "months_breached": self.months_breached,
+            "months_cured": self.months_cured,
+            "cure_threshold": self.cure_threshold,
+        }
+
+
+@dataclass
 class Snapshot:
     """
     Point-in-time record of deal state for reporting.
@@ -182,6 +285,8 @@ class DealState:
         Collateral pool attributes (mutable copy).
     flags : dict
         Test pass/fail flags.
+    trigger_states : dict
+        TriggerState objects with cure logic for each trigger.
     history : list
         List of Snapshot objects, one per completed period.
 
@@ -212,18 +317,20 @@ class DealState:
         self.variables: Dict[str, Any] = {}
         self.collateral: Dict[str, Any] = dict(definition.collateral)
         self.flags: Dict[str, bool] = {}
+        self.trigger_states: Dict[str, TriggerState] = {}
         self.history: List[Snapshot] = []
         self._initialize_t0()
 
     def _initialize_t0(self) -> None:
         """
-        Initialize cash buckets, bond balances, and ledgers at T=0.
+        Initialize cash buckets, bond balances, ledgers, and triggers at T=0.
 
         This method sets up the starting state:
         - All funds start with zero balance
         - All accounts start with zero balance
         - Bonds start at their original balance
         - CumulativeLoss ledger starts at zero
+        - Trigger states created with cure logic
         """
         for fund_id in self.def_.funds:
             self.cash_balances[fund_id] = 0.0
@@ -232,6 +339,16 @@ class DealState:
         for b_id, b_def in self.def_.bonds.items():
             self.bonds[b_id] = BondState(b_def.original_balance, b_def.original_balance)
         self.ledgers["CumulativeLoss"] = 0.0
+        
+        # Initialize trigger states with cure logic
+        for test in self.def_.tests:
+            trigger_id = test["id"]
+            # Check for custom cure threshold in test definition
+            cure_threshold = test.get("cure_periods", 3)  # Default: 3 periods
+            self.trigger_states[trigger_id] = TriggerState(
+                trigger_id=trigger_id,
+                cure_threshold=cure_threshold
+            )
 
     def deposit_funds(self, fund_id: str, amount: float) -> None:
         """

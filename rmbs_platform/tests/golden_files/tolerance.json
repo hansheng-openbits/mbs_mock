@@ -1,0 +1,36 @@
+{
+  "description": "Default tolerance thresholds for golden file comparisons",
+  "version": "1.0",
+  "tolerances": {
+    "cashflows": {
+      "absolute": 100.0,
+      "relative": 0.01,
+      "description": "Cashflows: ±$100 or ±1%, whichever is larger"
+    },
+    "balances": {
+      "absolute": 1000.0,
+      "relative": 0.001,
+      "description": "Balances: ±$1,000 or ±0.1%, whichever is larger"
+    },
+    "rates": {
+      "absolute": 0.0001,
+      "relative": 0.01,
+      "description": "Rates: ±0.01% (1 basis point) or ±1% relative"
+    },
+    "factors": {
+      "absolute": 0.00001,
+      "relative": 0.001,
+      "description": "Factors: ±0.001% or ±0.1% relative"
+    },
+    "percentages": {
+      "absolute": 0.0001,
+      "relative": 0.01,
+      "description": "Percentages: ±0.01% or ±1% relative"
+    }
+  },
+  "comparison_rules": {
+    "use_larger": true,
+    "ignore_zeros": true,
+    "description": "Use larger of absolute or relative tolerance; ignore zero values"
+  }
+}

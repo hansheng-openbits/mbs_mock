@@ -1,0 +1,60 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║        RMBS PLATFORM - QUICK REFERENCE CARD                            ║
+║        Deployed on Arbitrum One (Production)                           ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+📍 YOUR ADMIN ADDRESS:
+0x54d353CFA012F1E0D848F23d42755e98995Dc5f2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ DEPLOYED CONTRACTS (USE THESE ADDRESSES)
+
+RoleRegistry:       0xDE7b591Db00e7812b337460bC37bFc9B92b45748
+ServicerOracle:     0x28272E038bdb73377BfbCfcC9cb36DE577794f95
+TransferValidator:  0x10E63CCfb2D77e6bcDAFfB7b0470312BF56D2a41
+TrancheFactory:     0xffa7eed468902E4480BC7e55AA77E865f09Aa00d
+WaterfallEngine:    0x529237C51797Ce8e155AA038ce69f679bf3F5d11
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 ARBISCAN LINKS
+
+TrancheFactory:
+https://arbiscan.io/address/0xffa7eed468902E4480BC7e55AA77E865f09Aa00d
+
+WaterfallEngine:
+https://arbiscan.io/address/0x529237C51797Ce8e155AA038ce69f679bf3F5d11
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 DEPLOYMENT INFO
+
+Network:       Arbitrum One
+Chain ID:      42161
+RPC URL:       https://arb1.arbitrum.io/rpc
+Cost:          ~0.00154 ETH (~$3.85)
+Remaining:     ~0.00464 ETH
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 QUICK COMMANDS
+
+Check Balance:
+cast balance 0x54d353CFA012F1E0D848F23d42755e98995Dc5f2 \
+  --rpc-url https://arb1.arbitrum.io/rpc --ether
+
+Get All Deals:
+cast call 0xffa7eed468902E4480BC7e55AA77E865f09Aa00d \
+  "getAllDeals()(bytes32[])" \
+  --rpc-url https://arb1.arbitrum.io/rpc
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTATION
+
+Full Summary:      DEPLOYMENT_SUMMARY.md
+Deployment Guide:  DEPLOYMENT.md
+Progress Summary:  ../PROGRESS_SUMMARY.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

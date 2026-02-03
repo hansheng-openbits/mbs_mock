@@ -1,0 +1,134 @@
+[
+  {
+    "event_id": "8c80b5b0-e3e6-47eb-90ff-52ed49116039",
+    "deal_id": null,
+    "event_type": "ACCESS_GRANTED",
+    "actor": "admin",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.879538+00:00",
+    "data": {
+      "action": "auditor_registered",
+      "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+      "auditor_type": "FINANCIAL_AUDITOR",
+      "firm": "Big Four Audit Firm LLP"
+    },
+    "data_hash": "2712866dededbeef2f24726d6cf1f16e44470bef721015d6bc018f7b59780f83",
+    "previous_hash": "",
+    "signature": null
+  },
+  {
+    "event_id": "cfc1d608-a1e8-4a6d-b4f3-99e5174fa5e9",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "event_type": "ACCESS_GRANTED",
+    "actor": "arranger",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.880511+00:00",
+    "data": {
+      "grant_id": "865fcff7-26b1-4941-891f-9d0b0286f55d",
+      "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+      "scope": "FULL_DEAL_ACCESS",
+      "duration_days": 90
+    },
+    "data_hash": "3b8a050b2624f2277b5ef46ae487b9d63516aa3ff78ab9218a869421f3ef73a3",
+    "previous_hash": "3605b7e322b249037839a34d58fd10c69f92a11010746fbb1c3038f7785021b0",
+    "signature": null
+  },
+  {
+    "event_id": "477d08c5-6d93-4654-a809-75503fc28990",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "event_type": "DATA_ACCESSED",
+    "actor": "981ababa-9d29-4828-a00b-70cd20600958",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.881273+00:00",
+    "data": {
+      "data_type": "performance_tape",
+      "period": 1
+    },
+    "data_hash": "500b7b99ae118402c16946fa7fd7cc2e13a3ae6b906f36cdeaea9c12653b84c9",
+    "previous_hash": "846054298d0e64a12677f9674b114084998fc1f07d6e883d7be259488d31f809",
+    "signature": null
+  },
+  {
+    "event_id": "6167b5a2-da32-4ef2-9d7d-500d3f7997ef",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "event_type": "WATERFALL_EXECUTED",
+    "actor": "trustee",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.881810+00:00",
+    "data": {
+      "period": 1,
+      "total_distributed": 399612.19
+    },
+    "data_hash": "453e313ce4f4d66c87fc34037941072d6cc504f8abe877acf516c0bc71d2e249",
+    "previous_hash": "8e65f60460b2c5946ef230e599029d8335c6466e139aa2bee55f8eb791eee310",
+    "signature": null
+  },
+  {
+    "event_id": "84f564d0-e8d3-41bf-ba74-eaecc526fbfd",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "event_type": "FINDING_CREATED",
+    "actor": "981ababa-9d29-4828-a00b-70cd20600958",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.882977+00:00",
+    "data": {
+      "finding_id": "9a5a73c5-ff18-4236-950b-156b7c5d6aca",
+      "severity": "MEDIUM",
+      "title": "Loss severity calculation variance detected"
+    },
+    "data_hash": "1c7f7623c2661058030ac49bc43822ff4a1d17e6d6111a1325928a4a1b4de36a",
+    "previous_hash": "d7a9daa54cf23d79ab0e2f5b338e1c8bd1694987226424d4322c1e06fe78a49d",
+    "signature": null
+  },
+  {
+    "event_id": "cf458f6a-1915-40e1-a376-ac6d785781d0",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "event_type": "AUDITOR_ATTESTATION",
+    "actor": "981ababa-9d29-4828-a00b-70cd20600958",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.883912+00:00",
+    "data": {
+      "attestation_id": "2d4e66e8-5fb0-4a77-9c6b-7c953df7546f",
+      "attestation_type": "QUALIFIED",
+      "period_start": 1,
+      "period_end": 1
+    },
+    "data_hash": "6512fcfc4fe5fcd8797ba39b9624acfb1a0574d7af37c41de8406e38c6bf289e",
+    "previous_hash": "8a11d37d3ea11e14f89a50a9bc8771382d082d8d485fbce5cf7e975ce3c3e562",
+    "signature": null
+  },
+  {
+    "event_id": "aa7464f1-b46e-4aa8-9859-3b0d711a2593",
+    "deal_id": null,
+    "event_type": "COMPLIANCE_CHECK",
+    "actor": "system",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.884579+00:00",
+    "data": {
+      "action": "reputation_updated",
+      "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+      "old_score": 500,
+      "new_score": 510,
+      "delta": 10,
+      "reason": "Material findings identified"
+    },
+    "data_hash": "524bfb7683da264a012261b3b4529c07a3a07f671621084c414848c6c89a00a2",
+    "previous_hash": "876ee28648a3179c6ec876e9247ee69744ee47ca3444e87e5f0357e1cb124c87",
+    "signature": null
+  },
+  {
+    "event_id": "4754b373-1a86-4f53-bf8f-37efb12dd79e",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "event_type": "DISPUTE_OPENED",
+    "actor": "981ababa-9d29-4828-a00b-70cd20600958",
+    "actor_role": null,
+    "timestamp": "2026-02-02 14:36:22.885970+00:00",
+    "data": {
+      "dispute_id": "96d80e2d-ff7f-4118-b97e-707e1db3870b",
+      "dispute_type": "DATA_ACCURACY",
+      "respondent_id": "servicer@bank.com"
+    },
+    "data_hash": "a80ee6eb2c7ad11aebaf420b9a4f03ae260ad638b1dbbe4d6ae6b8c283f2794d",
+    "previous_hash": "c3eea8e50b16006d2c127c2c7603f4ff3119b4bb57d7d8d204e0b7c2d7daa937",
+    "signature": null
+  }
+]

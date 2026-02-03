@@ -223,6 +223,192 @@ class DealUploadRequest(BaseModel):
         }
 
 
+# =============================================================================
+# Web3 Integration Models
+# =============================================================================
+
+
+class Web3DealCreate(BaseModel):
+    deal_id: str = Field(description="Deal identifier (hex or text)")
+    deal_name: str = Field(description="Deal display name")
+    arranger: str = Field(description="Arranger wallet address")
+    closing_date: int = Field(description="Deal closing date (Unix timestamp)")
+    maturity_date: int = Field(description="Deal maturity date (Unix timestamp)")
+
+
+class Web3DealResponse(BaseModel):
+    deal_id: str
+    deal_name: str
+    arranger: str
+    closing_date: int
+    maturity_date: int
+    is_active: bool
+    total_face_value: int
+
+
+class Web3TrancheCreate(BaseModel):
+    deal_id: str
+    tranche_id: str
+    name: str
+    symbol: str
+    original_face_value: int
+    coupon_rate_bps: int
+    payment_frequency: int
+    maturity_date: int
+    payment_token: str
+    transfer_validator: str
+    admin: str
+    issuer: str
+    trustee: str
+
+
+class Web3InvestorUpdate(BaseModel):
+    investor: str
+    jurisdiction: Optional[str] = None
+    is_accredited: Optional[bool] = None
+    kyc_expiration: Optional[int] = None
+    sanctioned: Optional[bool] = None
+    lockup_expiration: Optional[int] = None
+
+
+class Web3LoanTapeSubmit(BaseModel):
+    deal_id: str
+    period_number: int
+    reporting_date: int
+    scheduled_principal: int
+    scheduled_interest: int
+    actual_principal: int
+    actual_interest: int
+    prepayments: int = 0
+    curtailments: int = 0
+    defaults: int = 0
+    loss_severity: int = 0
+    recoveries: int = 0
+    total_loan_count: int = 0
+    current_loan_count: int = 0
+    delinquent_loan_count: int = 0
+    total_upb: int = 0
+    wac: int = 0
+    wam: int = 0
+    wa_ltv: int = 0
+    data_hash: Optional[str] = None
+    zk_proof: Optional[bytes] = None
+
+
+class Web3WaterfallConfig(BaseModel):
+    deal_id: str
+    payment_token: str
+    tranches: List[str]
+    seniorities: List[int]
+    interest_rates_bps: List[int]
+    trustee_fees_bps: int = 0
+    servicer_fees_bps: int = 0
+    trustee_address: str
+    servicer_address: str
+    principal_sequential: bool = True
+
+
+class Web3WaterfallExecute(BaseModel):
+    deal_id: str
+    period_number: int
+    force_reprocess: bool = False  # Allow re-processing of already distributed periods (for testing)
+
+
+class Web3TransactionResponse(BaseModel):
+    transaction_hash: str
+    status: str = "submitted"
+
+
+class Web3BatchResponse(BaseModel):
+    transactions: List[str]
+    count: int
+
+
+class Web3TranchePublishRequest(BaseModel):
+    payment_token: str
+    transfer_validator: str
+    admin: str
+    issuer: str
+    trustee: str
+    payment_frequency: int = 1
+    maturity_date: Optional[int] = None
+    tranche_ids: Optional[List[str]] = None
+
+
+class Web3WaterfallPublishRequest(BaseModel):
+    payment_token: str
+    tranches: List[str]
+    trustee_address: str
+    servicer_address: str
+    trustee_fees_bps: int = 0
+    servicer_fees_bps: int = 0
+    principal_sequential: bool = True
+    interest_rates_bps: Optional[List[int]] = None
+    seniorities: Optional[List[int]] = None
+
+
+class Web3OraclePublishRange(BaseModel):
+    start_period: int
+    end_period: int
+
+
+class Web3TrancheRegistryUpdate(BaseModel):
+    tranches: List[str]
+
+
+class Web3PublishDealRequest(BaseModel):
+    deal_name: str
+    arranger: str
+    closing_date: int
+    maturity_date: int
+    payment_token: str
+    transfer_validator: str
+    admin: str
+    issuer: str
+    trustee: str
+    trustee_address: str
+    servicer_address: str
+    trustee_fees_bps: int = 0
+    servicer_fees_bps: int = 0
+    payment_frequency: int = 1
+    principal_sequential: bool = True
+    tranche_ids: Optional[List[str]] = None
+    tranche_addresses: Optional[List[str]] = None
+
+
+class Web3LoanNFTMintRequest(BaseModel):
+    """Request to mint loan NFTs for a deal."""
+    recipient_address: str = Field(description="Address to receive NFTs (issuer/trustee)")
+    loan_nft_contract: str = Field(description="LoanNFT contract address")
+
+
+class Web3LoanNFTMintParams(BaseModel):
+    """Parameters for a single loan NFT mint."""
+    deal_id: str
+    loan_id: str
+    original_balance: int
+    current_balance: int
+    note_rate: int  # in bps
+    origination_date: int  # Unix timestamp
+    maturity_date: int  # Unix timestamp
+    data_hash: str  # hex string
+    metadata_uri: str  # IPFS or off-chain URL
+
+
+class Web3LoanNFTMintResponse(BaseModel):
+    """Response after minting loan NFTs."""
+    transaction_hash: str
+    token_ids: List[int]
+    count: int
+    status: str = "submitted"
+
+
+class Web3TrancheTokenMintRequest(BaseModel):
+    """Request to mint tranche tokens and issue to holders."""
+    token_holders: List[str] = Field(description="List of investor addresses")
+    token_amounts: List[int] = Field(description="Token amounts per holder (must match length)")
+
+
 class DealUploadResponse(BaseModel):
     """Response after uploading a deal."""
 

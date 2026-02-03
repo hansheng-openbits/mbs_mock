@@ -1,0 +1,8 @@
+{
+  "last_synced_block": 0,
+  "last_sync_timestamp": null,
+  "network": "localhost",
+  "contracts_synced": [],
+  "sync_status": "idle",
+  "note": "This file tracks blockchain synchronization state. In mock mode, this is not used."
+}

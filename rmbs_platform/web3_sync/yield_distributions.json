@@ -1,0 +1,39 @@
+{
+  "distributions": [
+    {
+      "distribution_id": "DIST_20260202T013421.245018+0000",
+      "deal_id": "FREDDIE_SAMPLE_2017_2020",
+      "tranche_id": "ClassA1",
+      "period": 1,
+      "total_amount": 375000.0,
+      "distributed_at": "2026-02-02T01:34:21.245018+00:00",
+      "holder_count": 1,
+      "distributions": [
+        {
+          "address": "0x0000000000000000000000000000000000000001",
+          "balance": 150000000.0,
+          "share": 1.0,
+          "yield_amount": 375000.0
+        }
+      ]
+    },
+    {
+      "distribution_id": "DIST_20260202T013421.245630+0000",
+      "deal_id": "FREDDIE_SAMPLE_2017_2020",
+      "tranche_id": "ClassA2",
+      "period": 1,
+      "total_amount": 24612.195833333302,
+      "distributed_at": "2026-02-02T01:34:21.245630+00:00",
+      "holder_count": 1,
+      "distributions": [
+        {
+          "address": "0x0000000000000000000000000000000000000001",
+          "balance": 60000000.0,
+          "share": 1.0,
+          "yield_amount": 24612.195833333302
+        }
+      ]
+    }
+  ],
+  "updated_at": "2026-02-02T01:34:21.246036+00:00"
+}

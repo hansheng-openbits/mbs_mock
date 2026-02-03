@@ -1,0 +1,22 @@
+[
+  {
+    "dispute_id": "96d80e2d-ff7f-4118-b97e-707e1db3870b",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "initiator_id": "981ababa-9d29-4828-a00b-70cd20600958",
+    "respondent_id": "servicer@bank.com",
+    "dispute_type": "DATA_ACCURACY",
+    "title": "Loss severity data quality concern",
+    "description": "Loss severity calculation methodology appears inconsistent with PSA terms.",
+    "evidence_hash": null,
+    "response_evidence_hash": null,
+    "status": "OPENED",
+    "created_at": "2026-02-02 14:36:22.885749+00:00",
+    "evidence_deadline": "2026-02-09 14:36:22.885726+00:00",
+    "resolution_deadline": null,
+    "arbitrators": [],
+    "votes": [],
+    "resolution": null,
+    "in_favor_of_initiator": null,
+    "resolved_at": null
+  }
+]

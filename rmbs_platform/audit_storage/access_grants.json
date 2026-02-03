@@ -1,0 +1,18 @@
+[
+  {
+    "grant_id": "865fcff7-26b1-4941-891f-9d0b0286f55d",
+    "auditor_id": "981ababa-9d29-4828-a00b-70cd20600958",
+    "deal_id": "FREDDIE_SAMPLE_2017_2020",
+    "scope": "FULL_DEAL_ACCESS",
+    "granted_at": "2026-02-02 14:36:22.880240+00:00",
+    "expires_at": "2026-05-03 14:36:22.880210+00:00",
+    "granted_by": "arranger",
+    "purpose_description": "Annual audit engagement for FREDDIE_SAMPLE_2017_2020",
+    "purpose_hash": "142c887f1c54426e1737e36065f572ffe97015510c9922a8d3f2649dbfa6ea75",
+    "revoked": false,
+    "revoked_at": null,
+    "revoked_by": null,
+    "revoke_reason": null,
+    "is_valid": true
+  }
+]

@@ -58,6 +58,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .compute import ExpressionEngine
 from .state import DealState
+from .audit_trail import AuditTrail, WaterfallStepTrace
 
 logger = logging.getLogger("RMBS.Waterfall")
 
@@ -164,6 +165,7 @@ class WaterfallRunner:
         max_iterations: int = 10,
         convergence_tol: float = 0.01,
         use_iterative_solver: bool = False,
+        audit_trail: Optional[AuditTrail] = None,
     ) -> None:
         """
         Initialize the waterfall runner with an expression engine.
@@ -178,12 +180,15 @@ class WaterfallRunner:
             Maximum balance difference to consider converged.
         use_iterative_solver : bool, default False
             Force iterative solver mode.
+        audit_trail : AuditTrail, optional
+            Audit trail for capturing execution details.
         """
         self.expr = engine
         self.max_iterations = max_iterations
         self.convergence_tol = convergence_tol
         self.use_iterative_solver = use_iterative_solver
         self.last_solver_result: Optional[SolverResult] = None
+        self.audit_trail = audit_trail
 
     def evaluate_period(self, state: DealState) -> None:
         """
@@ -254,6 +259,14 @@ class WaterfallRunner:
         """
         logger.info(f"--- Running Period {state.period_index + 1} ---")
 
+        # Start audit trail for this period
+        if self.audit_trail:
+            initial_state = {
+                "bonds": {bid: b.current_balance for bid, b in state.bonds.items()},
+                "funds": dict(state.cash_balances)
+            }
+            self.audit_trail.start_period(state.period_index + 1, initial_state)
+
         # Check if deal has circular dependencies (Net WAC cap, etc.)
         has_circular = self._detect_circular_dependencies(state)
         use_solver = self.use_iterative_solver or has_circular
@@ -262,6 +275,14 @@ class WaterfallRunner:
             self._run_period_iterative(state)
         else:
             self._run_period_sequential(state)
+        
+        # End audit trail for this period
+        if self.audit_trail:
+            final_state = {
+                "bonds": {bid: b.current_balance for bid, b in state.bonds.items()},
+                "funds": dict(state.cash_balances)
+            }
+            self.audit_trail.end_period(final_state)
 
     def _run_period_sequential(self, state: DealState) -> None:
         """
@@ -334,6 +355,14 @@ class WaterfallRunner:
         
         if not result.converged:
             logger.warning(f"Solver did not converge after {self.max_iterations} iterations (diff: ${result.final_tolerance:.4f})")
+        
+        # Record solver result in audit trail
+        if self.audit_trail:
+            self.audit_trail.record_solver_result(
+                result.iterations,
+                result.converged,
+                result.final_tolerance
+            )
         
         # Allocate losses (after convergence)
         self._allocate_losses(state)
@@ -411,23 +440,56 @@ class WaterfallRunner:
         """
         Apply Net WAC cap to bond interest calculations.
         
-        The Net WAC cap limits bond coupon to available interest:
+        The Net WAC cap limits bond coupon to available interest after fees:
         
-            Effective Rate = min(Coupon, Available Interest / Bond Balance)
+            Net WAC = (Interest Collections - Senior Fees) / Bond Balance × 12
         
         Where:
-            Available Interest = Collections - Senior Fees
+            - Interest Collections = Gross interest from collateral
+            - Senior Fees = Servicing + Trustee + Other senior fees
+            - Bond Balance = Total outstanding bond principal
         
         This prevents bonds from being paid more interest than the
-        collateral actually generates.
-        """
-        # Get available interest (after fees)
-        available_interest = state.cash_balances.get("IAF", 0.0)
+        collateral actually generates after paying senior fees.
         
-        # Check for explicit net_wac_cap configuration
-        net_wac_cap_config = state.def_.waterfalls.get("net_wac_cap", {})
-        if not net_wac_cap_config.get("enabled", False):
+        The calculated Net WAC is stored in state.variables["NetWAC"] and
+        can be referenced by bond interest formulas in the deal spec.
+        """
+        # Get available interest (gross collections)
+        gross_interest = state.cash_balances.get("IAF", 0.0)
+        
+        if gross_interest <= 0:
+            state.set_variable("NetWAC", 0.0)
             return
+        
+        # Calculate senior fees from variables
+        # These are typically calculated in _calculate_variables() before waterfall runs
+        senior_fees = 0.0
+        
+        # Add servicing fee
+        servicing_fee = state.get_variable("ServicingFeeAmount") or 0.0
+        senior_fees += servicing_fee
+        
+        # Add trustee fee
+        trustee_fee = state.get_variable("TrusteeFeeAmount") or 0.0
+        senior_fees += trustee_fee
+        
+        # Add custodian fee
+        custodian_fee = state.get_variable("CustodianFeeAmount") or 0.0
+        senior_fees += custodian_fee
+        
+        # Add any other fees marked as "senior" in the waterfall
+        # (fees paid before bond interest)
+        for var_name, var_value in state.variables.items():
+            if var_name.endswith("FeeAmount") and var_name not in [
+                "ServicingFeeAmount", "TrusteeFeeAmount", "CustodianFeeAmount"
+            ]:
+                # Check if this fee is paid before bond interest in waterfall
+                if self._is_senior_fee(var_name, state):
+                    senior_fees += (var_value or 0.0)
+        
+        # Calculate net interest available for bonds
+        net_interest = max(0.0, gross_interest - senior_fees)
         
         # Calculate total bond balance
         total_bond_balance = sum(
@@ -435,31 +497,64 @@ class WaterfallRunner:
         )
         
         if total_bond_balance <= 0:
+            state.set_variable("NetWAC", 0.0)
             return
         
-        # Calculate implied max rate
-        if available_interest > 0:
-            implied_max_rate = (available_interest * 12) / total_bond_balance
-        else:
-            implied_max_rate = 0.0
+        # Calculate Net WAC (annualized rate)
+        net_wac = (net_interest / total_bond_balance) * 12.0
         
-        # Apply cap to each bond's effective rate
-        for bond_id, bond in state.bonds.items():
-            if hasattr(bond, 'coupon_rate') and bond.coupon_rate > implied_max_rate:
-                # Store original for diagnostics
-                if not hasattr(bond, '_original_coupon'):
-                    bond._original_coupon = bond.coupon_rate
-                
-                # Cap the effective rate
-                bond.effective_rate = min(bond.coupon_rate, implied_max_rate)
-                
-                # Log the cap application
-                cap_reduction = bond.coupon_rate - implied_max_rate
-                if cap_reduction > 0.0001:
-                    logger.info(
-                        f"Net WAC cap applied to {bond_id}: "
-                        f"{bond.coupon_rate:.4%} → {implied_max_rate:.4%}"
-                    )
+        # Store Net WAC for use by bond interest calculations
+        state.set_variable("NetWAC", net_wac)
+        
+        # Log if Net WAC is significantly different from gross WAC
+        if state.get_variable("GrossWAC"):
+            gross_wac = state.get_variable("GrossWAC")
+            if abs(net_wac - gross_wac) > 0.0010:  # > 10 bps difference
+                logger.info(
+                    f"Net WAC cap: Gross WAC {gross_wac:.4%} → Net WAC {net_wac:.4%} "
+                    f"(Fees: ${senior_fees:,.0f})"
+                )
+    
+    def _is_senior_fee(self, fee_var_name: str, state: DealState) -> bool:
+        """
+        Determine if a fee is paid before bond interest (i.e., a "senior" fee).
+        
+        Parameters
+        ----------
+        fee_var_name : str
+            Name of the fee variable (e.g., "AdminFeeAmount")
+        state : DealState
+            Current deal state
+            
+        Returns
+        -------
+        bool
+            True if the fee is paid before any PAY_BOND_INTEREST steps
+        """
+        wf_interest = state.def_.waterfalls.get("interest", {})
+        steps = wf_interest.get("steps", [])
+        
+        # Find position of first PAY_BOND_INTEREST step
+        first_bond_interest_pos = None
+        for i, step in enumerate(steps):
+            if step.get("action") == "PAY_BOND_INTEREST":
+                first_bond_interest_pos = i
+                break
+        
+        if first_bond_interest_pos is None:
+            # No bond interest steps found, treat as senior
+            return True
+        
+        # Find position of this fee payment
+        for i, step in enumerate(steps):
+            if step.get("action") == "PAY_FEE":
+                amount_rule = step.get("amount_rule", "")
+                if amount_rule == fee_var_name:
+                    # Fee is senior if it's paid before first bond interest
+                    return i < first_bond_interest_pos
+        
+        # Fee not found in waterfall, conservatively treat as senior
+        return True
 
     def _calculate_variables(self, state: DealState) -> None:
         """
@@ -489,19 +584,29 @@ class WaterfallRunner:
         for var_name, rule_str in state.def_.variables.items():
             val = self.expr.evaluate(rule_str, state)
             state.set_variable(var_name, val)
+            
+            # Record in audit trail
+            if self.audit_trail:
+                self.audit_trail.record_variable(var_name, val)
 
     def _run_tests(self, state: DealState) -> None:
         """
-        Evaluate deal tests (e.g., triggers) and set pass/fail flags.
+        Evaluate deal tests (e.g., triggers) with cure logic to prevent flickering.
 
         Tests are defined in the deal specification with:
         - A calculation rule for the test value
         - A threshold rule for the comparison
         - A pass condition (VALUE_LT_THRESHOLD, etc.)
+        - Optional cure_periods for cure threshold (default: 3)
 
         The test result is stored in state.flags[test_id] where:
         - True = test FAILED (trigger condition met)
         - False = test PASSED
+
+        **NEW: Cure Logic**
+        Instead of directly setting flags, this method now updates TriggerState
+        objects that track consecutive periods of breach/cure. This prevents
+        "flickering" where triggers alternate between breached and cured.
 
         Parameters
         ----------
@@ -516,8 +621,10 @@ class WaterfallRunner:
         - ``VALUE_GT_THRESHOLD``: Pass if value > threshold
         - ``VALUE_GEQ_THRESHOLD``: Pass if value >= threshold
 
-        **Effects**: Tests can define effects that set additional flags
-        when the test fails, enabling trigger cascades.
+        **Cure Logic**:
+        - A trigger that fails is breached immediately.
+        - A breached trigger requires N consecutive passing periods to cure (N=3 default).
+        - This prevents oscillation between breach/cure due to minor fluctuations.
 
         Example
         -------
@@ -525,6 +632,8 @@ class WaterfallRunner:
         >>> runner._run_tests(state)
         >>> if state.flags.get("DelinqTest"):
         ...     print("Delinquency trigger breached!")
+        >>> trigger = state.trigger_states.get("DelinqTest")
+        >>> print(f"Cure progress: {trigger.months_cured}/{trigger.cure_threshold}")
         """
         for test in state.def_.tests:
             test_id = test["id"]
@@ -549,11 +658,23 @@ class WaterfallRunner:
             elif operator == "VALUE_GEQ_THRESHOLD":
                 passed = val >= thresh
 
-            # C. Set Flags (failed = not passed)
-            state.flags[test_id] = not passed
+            # C. Update TriggerState with cure logic
+            if test_id in state.trigger_states:
+                trigger = state.trigger_states[test_id]
+                trigger.update(test_passed=passed)
+                
+                # Set flag based on trigger state (not immediate test result)
+                state.flags[test_id] = trigger.is_breached
+            else:
+                # Fallback: No trigger state (legacy behavior)
+                state.flags[test_id] = not passed
 
-            # Handle explicit effects from schema
-            if not passed:
+            # Record test evaluation in audit trail
+            if self.audit_trail:
+                self.audit_trail.record_test(test_id, passed, val, thresh)
+
+            # D. Handle explicit effects from schema
+            if state.flags[test_id]:  # If trigger is breached
                 for effect in test.get("effects", []):
                     if "set_flag" in effect:
                         state.flags[effect["set_flag"]] = True

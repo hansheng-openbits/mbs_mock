@@ -188,6 +188,19 @@ class Settings:
         self.database_url: Optional[str] = _get_env("DATABASE_URL", None, str)
         self.redis_url: Optional[str] = _get_env("REDIS_URL", None, str)
 
+        # =====================================================================
+        # Web3 Integration
+        # =====================================================================
+        self.web3_enabled: bool = _get_env("WEB3_ENABLED", False, bool)
+        self.web3_rpc_url: str = _get_env("WEB3_RPC_URL", "", str)
+        self.web3_admin_private_key: str = _get_env("WEB3_ADMIN_PRIVATE_KEY", "", str)
+        self.web3_default_gas: int = _get_env("WEB3_DEFAULT_GAS", 1_000_000, int)
+        self.web3_tranche_factory: str = _get_env("WEB3_TRANCHE_FACTORY", "", str)
+        self.web3_transfer_validator: str = _get_env("WEB3_TRANSFER_VALIDATOR", "", str)
+        self.web3_servicer_oracle: str = _get_env("WEB3_SERVICER_ORACLE", "", str)
+        self.web3_waterfall_engine: str = _get_env("WEB3_WATERFALL_ENGINE", "", str)
+        self.web3_loan_nft: str = _get_env("WEB3_LOAN_NFT", "", str)
+
     @property
     def package_root(self) -> Path:
         """Return the package root directory."""
